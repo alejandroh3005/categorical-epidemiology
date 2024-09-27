@@ -7,38 +7,180 @@ date: "October 5, 2024"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include=F}
+# setup options
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+options(knitr.kable.NA = '-')
+labs = knitr::all_labels()
+labs = labs[!labs %in% c("setup", "llm_appendix", "allcode")]
+```
+
+```{r load-libraries-data, include=F}
+# clear environment
+rm(list=ls())
+
+# load relevant packages
+library(dplyr)      # data frame manipulation
+library(knitr)      # table formatting
+library(gtsummary)  # "table 1" summary
+# library(tidyverse)
+
+# load data
+aml <- read.csv("../data/leukemia_data.csv") %>% 
+  dplyr::mutate_at(vars(tx, sex, eval, cr, status, bmtx, incl), as.factor)
+aml$tx <- ifelse(aml$tx=="D", 0, 1)
+aml$fem <- ifelse(aml$sex=="M", 0, 1)
+aml$cr <- ifelse(aml$cr=="N", 0, 1)
 ```
 
 ## Background
 
-The following questions are related to the evaluation of a clinical trial in patients with acute myelogenous leukemia (AML). The data and documentation are on the course CANVAS site.  The primary endpoint of the clinical trial was induction of complete remission (binary outcome).
+The following questions are related to the evaluation of a clinical trial in patients with acute myelogenous leukemia (AML). The primary endpoint of the clinical trial was induction of complete remission (binary outcome); the two treatments being compared were the newly synthesized anthracycline *idarubicin* and the standard anthracycline agent *daunorubicin*. This assignment ignores certain sequential aspects of the original study and analyzes the data as if investigators always intended to analyze 130 subjects. The complete data and documentation are on the course Canvas site (not publicly accessible).
 
-### 1. Descriptive Statistics
+## Descriptive Statistics
 
-### 2. Measures of Association
+1. Provide suitable descriptive statistics for this dataset as might be presented in Table 1 of a manuscript appearing in the medical literature.
 
-### 3. 
+```{r question-1, fig.cap="Table 1"}
 
-\newpage
-
-**End of report**
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+## ===============
+## Question 1
+## ===============
+# create "Table 1" summary
+aml %>%
+  dplyr::select(tx, cr, sex, age, fab, karn, wbc, plt, hgb, status) %>%
+  gtsummary::tbl_summary(by = tx, missing = "no") %>%
+  bold_labels()
 ```
 
-## Including Plots
+## Measures of Association
 
-You can also embed plots, for example:
+2. Summarize the data in a 2x2 table where outcome D is complete remission and exposure E is treatment group.  Estimate the RR, RD, and OR. Which of the three summary measures do you think AML patients would be most interested in?
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r question-2}
+
+## ===============
+## Question 2
+## ===============
+# 2x2 table to summarize the number of patients who completed remission 
+# in each treatment arm
+aml %>%
+  select('Complete Resmission'=cr, 'Treatment'=tx) %>%
+  table()
+
+# prob of complete remission given unexposed (standard treatment)
+pRgU <- mean(subset(aml, tx==0)$cr)
+# prob of complete remission given exposed (new treatment)
+pRgE <- mean(subset(aml, tx==1)$cr)
+
+# relative risk of complete remission given exposure
+rr.E <- pRgE / pRgU
+# risk difference of complete remission given exposure
+rd.E <- pRgE - pRgU
+# odds ratio of complete remission given exposure
+odds.E <- pRgE / (1 - pRgE)
+odds.notE <- pRgU / (1 - pRgU)
+or.E <- odds.E / odds.notE
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+The **relative risk** of complete remission given exposure is `r round(rr.E, 3)`. Then, according to our clinical trial, we estimate the likelihood of reaching complete remission to be approximately `r round(rr.E, 1)` times greater in the arm treated with idarubicin than in the arm treated with daunorubicin.
+In simple terms: the proportion of patients in our sample who reached complete remission as a part of the new treatment group is approximately `r round(rr.E, 1)` times greater than the proportion of patients who reached complete remission as part of the standard treatment group.
+
+The **risk difference** of complete remission given exposure is `r round(rd.E, 3)`. We estimate the probability of reaching complete remission to differ between our treatment groups by approximately `r round(100*rd.E)`%, with the idarubicin-treated arm having greater chances of completing remission. 
+
+The **odds ratio** of complete remission given exposure is `r round(or.E, 3)`. We estimate the odds of reaching complete remission to be approximately `r round(or.E, 1)` times greater in the arm treated with idarubicin than in the arm treated with daunorubicin.
+
+3. Summarize the data in a pair of 2x2 tables as done in Lecture 2, where D is complete remission, E is treatment group, and the covariate is sex.
+
+```{r question-3}
+
+## ===============
+## Question 3
+## ===============
+# 2x2 table to summarize the number of patients who completed remission 
+# in each treatment arm, by sex
+aml %>%
+  select('Complete Resmission'=cr, 'Treatment'=tx, Female=fem) %>%
+  table()
+```
+
+## Logistic Regression
+
+4. Perform a logistic regression analysis to assess the treatment effect of idarubicin compared to daunorubicin adjusted for sex.  In other words, estimate the sex-adjusted OR and present in language suitable for scientific publication.
+
+```{r question-4}
+
+## ===============
+## Question 4
+## ===============
+mod.lr <- glm(cr ~ tx + fem, family="binomial", data=aml)
+```
+
+The **odds ratio** of complete remission given exposure and sex is `r round(exp(coef(mod.lr)['tx']), 3)`. We estimate the odds of reaching complete remission to be approximately `r round(exp(coef(mod.lr)['tx']), 1)` times greater in the arm treated with idarubicin than in the arm treated with daunorubicin, controlling for sex.
+
+5. Using the subset of data on males, perform a logistic regression analysis to assess the treatment effect of idarubicin compared to daunorubicin for males. Repeat for females.
+
+```{r question-5}
+
+## ===============
+## Question 5
+## ===============
+mod.lr2 <- glm(cr ~ tx + fem, family="binomial", data=subset(aml, fem==0))
+mod.lr3 <- glm(cr ~ tx + fem, family="binomial", data=subset(aml, fem==1))
+```
+
+Among the subset of male patients, the **odds ratio** of complete remission given knowledge of their treatment group is `r round(exp(coef(mod.lr)['tx']), 3)`. We estimate the odds of male patients reaching complete remission to be approximately `r round(exp(coef(mod.lr)['tx']), 1)` times greater in the arm treated with idarubicin than in the arm treated with daunorubicin, controlling for sex.
+
+Among the subset of female patients, the **odds ratio** of complete remission given knowledge of their treatment group is `r round(exp(coef(mod.lr2)['tx']), 3)`. We estimate the odds of female patients reaching complete remission to be approximately `r round(exp(coef(mod.lr2)['tx']), 1)` times greater in the arm treated with idarubicin than in the arm treated with daunorubicin, controlling for sex.
+
+6. You should have found that the sex-adjusted OR you obtained in Q4 is in between the two sex-specific OR you obtained in Q5.  Can you explain why this make sense?  
+
+7.	Fit a logistic regression model with treatment arm, sex, and their interaction. Use the model to estimate the treatment effect in males, and compare to your result to 5(a). Use the model to estimate the treatment effect in females, and compare to your result in 5(b). Comment on the similarity or difference.  In general, when you are asked for a point estimate you should include a confidence interval; however, for this problem you are not required to provide confidence intervals.
+
+```{r question-7}
+
+## ===============
+## Question 7
+## ===============
+mod.lr3 <- glm(cr ~ tx*fem, family="binomial", data=aml)
+round(exp(coef(mod.lr3)), 3)
+```
+
+8.
+
+(a) Write the population attributable risk (as given in Lecture 1) as a function of the rate of exposure P[E] and the relative risk of disease RR.
+
+(b) Suppose smokers have 22 times the risk of dying from lung cancer as non-smokers.  Consider a population of 35% smokers. Estimate the PAR for smoking and lung cancer death (point estimate only). Write a sentence presenting and interpreting the PAR.
+
+(c) Suppose smokers have 22 times the risk of dying from lung cancer as non-smokers.  Consider a population of 5% smokers. Estimate the PAR for smoking and lung cancer death (point estimate only). Write a sentence presenting and interpreting the PAR.
+
+(d) Comment on the difference between the PAR in (b) and (c).
+
+```{r question-8}
+
+## ===============
+## Question 8
+## ===============
+
+```
+
+9. Consider the R script `sim_casecontrolsampling.R` discussed in the first day of class.  A statistic not considered is the risk difference RD.  Would you expect the RD computed on a case-control sample to estimate the RD in the population?  Why or why not?  You should be able to answer this question based on the principles already discussed.  If you want to, you can modify the my.summary function to include the RD and examine the results.  However, this is not required for the homework.
+
+```{r question-9}
+
+## ===============
+## Question 9
+## ===============
+
+```
+
+**End of report. Code appendix begins on the next page.**
+
+\pagebreak
+
+## Code Appendix
+
+```{r allcode, ref.label = knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+**End of document.**
