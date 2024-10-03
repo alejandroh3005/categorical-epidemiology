@@ -23,14 +23,21 @@ rm(list=ls())
 library(dplyr)      # data frame manipulation
 library(knitr)      # table formatting
 library(gtsummary)  # "table 1" summary
+library(sjPlot)     # model coefficient table
 # library(tidyverse)
 
 # load data
 aml <- read.csv("../data/leukemia_data.csv") %>% 
+  # read in select variables as factors
   dplyr::mutate_at(vars(tx, sex, eval, cr, status, bmtx, incl), as.factor)
-aml$tx <- ifelse(aml$tx=="D", 0, 1)
-aml$fem <- ifelse(aml$sex=="M", 0, 1)
-aml$cr <- ifelse(aml$cr=="N", 0, 1)
+# create boolean variables
+aml$tx2 <- ifelse(aml$tx=="D", 0, 1)
+aml$sex2 <- ifelse(aml$sex=="M", 0, 1)
+aml$cr2 <- ifelse(aml$cr=="N", 0, 1)
+# rename levels of select factors
+levels(aml$tx) <- c("Daunorubicin", "Idarubicin")
+levels(aml$sex) <- c("Female", "Male")
+levels(aml$cr) <- c("Did not complete remission", "Completed remission")
 ```
 
 ## Background
@@ -53,6 +60,7 @@ aml %>%
   bold_labels()
 ```
 
+
 ## Measures of Association
 
 2. Summarize the data in a 2x2 table where outcome D is complete remission and exposure E is treatment group.  Estimate the RR, RD, and OR. Which of the three summary measures do you think AML patients would be most interested in?
@@ -64,14 +72,14 @@ aml %>%
 ## ===============
 # 2x2 table to summarize the number of patients who completed remission 
 # in each treatment arm
-aml %>%
-  select('Complete Resmission'=cr, 'Treatment'=tx) %>%
-  table()
+table(aml$cr, aml$tx) %>%
+  knitr::kable(caption = "Contingency table of patients who completed remission 
+               in each treatment arm")
 
 # prob of complete remission given unexposed (standard treatment)
-pRgU <- mean(subset(aml, tx==0)$cr)
+pRgU <- mean(subset(aml, tx2==0)$cr2)
 # prob of complete remission given exposed (new treatment)
-pRgE <- mean(subset(aml, tx==1)$cr)
+pRgE <- mean(subset(aml, tx2==1)$cr2)
 
 # relative risk of complete remission given exposure
 rr.E <- pRgE / pRgU
@@ -99,52 +107,91 @@ The **odds ratio** of complete remission given exposure is `r round(or.E, 3)`. W
 ## ===============
 # 2x2 table to summarize the number of patients who completed remission 
 # in each treatment arm, by sex
-aml %>%
-  select('Complete Resmission'=cr, 'Treatment'=tx, Female=fem) %>%
-  table()
+subset(aml, sex == "Female", select = c(cr, tx)) %>%
+  table() %>%
+  kable(caption = "Contingency table of female patients who completed remission
+        in each treatment arm")
+
+subset(aml, sex == "Male", select = c(cr, tx)) %>%
+  table() %>%
+  kable(caption = "Contingency table of male patients who completed remission
+        in each treatment arm")
 ```
 
 ## Logistic Regression
 
 4. Perform a logistic regression analysis to assess the treatment effect of idarubicin compared to daunorubicin adjusted for sex.  In other words, estimate the sex-adjusted OR and present in language suitable for scientific publication.
 
-```{r question-4}
+```{r question-4, results=FALSE}
 
 ## ===============
 ## Question 4
 ## ===============
-mod.lr <- glm(cr ~ tx + fem, family="binomial", data=aml)
+mod.lr <- glm(cr ~ tx + sex, family = binomial(), data=aml)
+exp.coef <- exp(coef(mod.lr))
+exp.confint <- exp(confint(mod.lr))
+                
+# print model coefficients with sjPlot (not displayed in PDF)
+sjPlot::tab_model(mod.lr, title = "Logistic regression of complete remission",
+                  show.r2 = F, show.aic = T)
 ```
 
-The **odds ratio** of complete remission given exposure and sex is `r round(exp(coef(mod.lr)['tx']), 3)`. We estimate the odds of reaching complete remission to be approximately `r round(exp(coef(mod.lr)['tx']), 1)` times greater in the arm treated with idarubicin than in the arm treated with daunorubicin, controlling for sex.
+We estimate that the odds of complete remission from acute myelogenous leukemia (AML) is `r round(exp.coef[2], 2)` times greater for a population treated with idarubicin compared to a population of the same sex treated with daunorubicin (95% CI for odds ratio: `r round(exp.confint[2,1], 2)` - `r round(exp.confint[2,2], 2)`).
+
+This analysis of our sample suggests the newly synthesized anthracycline, idarubicin, has a statistically significant, positive effect on the induction of complete AML remission. However, our confidence interval indicates that observing a weak effect within a patient population would not be unusual. 
 
 5. Using the subset of data on males, perform a logistic regression analysis to assess the treatment effect of idarubicin compared to daunorubicin for males. Repeat for females.
 
-```{r question-5}
+```{r question-5, results=FALSE}
 
 ## ===============
 ## Question 5
 ## ===============
-mod.lr2 <- glm(cr ~ tx + fem, family="binomial", data=subset(aml, fem==0))
-mod.lr3 <- glm(cr ~ tx + fem, family="binomial", data=subset(aml, fem==1))
+mod.lr2 <- glm(cr ~ tx, family = binomial(), data=subset(aml, sex2==0))
+exp.coef2 <- exp(coef(mod.lr2))
+exp.confint2 <- exp(confint(mod.lr2))
+
+mod.lr3 <- glm(cr ~ tx, family = binomial(), data=subset(aml, sex2==1))
+exp.coef3 <- exp(coef(mod.lr3))
+exp.confint3 <- exp(confint(mod.lr3))
+
+# print model coefficients with sjPlot (not displayed in PDF)
+tab_model(mod.lr2, title = "Logistic regression of complete remission among
+          male patients", show.r2 = F, show.aic = T)
+tab_model(mod.lr3, title = "Logistic regression of complete remission among 
+          female patients", show.r2 = F, show.aic = T)
 ```
 
-Among the subset of male patients, the **odds ratio** of complete remission given knowledge of their treatment group is `r round(exp(coef(mod.lr)['tx']), 3)`. We estimate the odds of male patients reaching complete remission to be approximately `r round(exp(coef(mod.lr)['tx']), 1)` times greater in the arm treated with idarubicin than in the arm treated with daunorubicin, controlling for sex.
+We estimate that the odds of complete AML remission is `r round(exp.coef2[2], 2)` times greater for a male population treated with idarubicin compared to a male population treated with daunorubicin (95% CI for odds ratio: `r round(exp.confint2[2,1], 2)` - `r round(exp.confint2[2,2], 2)`).
 
-Among the subset of female patients, the **odds ratio** of complete remission given knowledge of their treatment group is `r round(exp(coef(mod.lr2)['tx']), 3)`. We estimate the odds of female patients reaching complete remission to be approximately `r round(exp(coef(mod.lr2)['tx']), 1)` times greater in the arm treated with idarubicin than in the arm treated with daunorubicin, controlling for sex.
+Comparing two treated female populations, we estimate the odds of complete AML remission to be `r round(exp.coef3[2], 2)` times greater for females receiving idarubicin than those receiving daunorubicin (95% CI for odds ratio: `r round(exp.confint3[2,1], 2)` - `r round(exp.confint3[2,2], 2)`).
 
-6. You should have found that the sex-adjusted OR you obtained in Q4 is in between the two sex-specific OR you obtained in Q5.  Can you explain why this make sense?  
+Neither analyses of these subsamples suggest the idarubicin treatment has a statistically significant effect on the induction of complete remission of AML. Still, our confidence interval indicates that observing a strong effect within either group of patients would not be unusual.
+
+6. You should have found that the sex-adjusted OR you obtained in Q4 is in between the two sex-specific OR you obtained in Q5.  Can you explain why this make sense?
+
+The subgroups that fashioned the two conditional logistic regression models form a complete partition of the sample that fit the marginal logistic regression model; because logistic regression models the proportion of a population, the estimated proportion of the overall population will be an aggregate of the estimated proportions of the subpopulations.
 
 7.	Fit a logistic regression model with treatment arm, sex, and their interaction. Use the model to estimate the treatment effect in males, and compare to your result to 5(a). Use the model to estimate the treatment effect in females, and compare to your result in 5(b). Comment on the similarity or difference.  In general, when you are asked for a point estimate you should include a confidence interval; however, for this problem you are not required to provide confidence intervals.
 
-```{r question-7}
+
+```{r question-7, results=FALSE}
 
 ## ===============
 ## Question 7
 ## ===============
-mod.lr3 <- glm(cr ~ tx*fem, family="binomial", data=aml)
-round(exp(coef(mod.lr3)), 3)
+mod.lr4 <- glm(cr ~ tx*sex, family=binomial(), data=aml)
+coef4 <- coef(mod.lr4)
+confint4 <- confint(mod.lr4)
+
+# print model coefficients with sjPlot (not displayed in PDF)
+tab_model(mod.lr4, title = "Logistic regression of complete remission", 
+          show.r2 = F, show.aic = T)
 ```
+
+We estimate that the odds of complete AML remission is `r round(exp(coef4[2] + coef4[4]), 2)` times greater for a male population treated with idarubicin compared to a male population treated with daunorubicin (95% CI for odds ratio: `r round(exp(confint4[2,1] + confint4[4,1]), 2)` - `r round(exp(confint4[2,2] + confint4[4,2]), 2)`).
+
+Comparing two treated female populations, we estimate the odds of complete AML remission to be `r round(exp(coef4[2]), 1)` times greater for females receiving idarubicin than those receiving daunorubicin (95% CI for odds ratio: `r round(exp(confint4[2,1]), 2)` - `r round(exp(confint4[2,2]), 2)`).
 
 8.
 
