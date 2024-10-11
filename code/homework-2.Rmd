@@ -1,0 +1,174 @@
+---
+title: "BIOST 536: Homework 2"
+subtitle: "Department of Biostatistics @ University of Washington"
+author: 
+- Alejandro Hernandez
+date: "October 12, 2024"
+output: pdf_document
+---
+
+```{r setup, include=F}
+# setup options
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+options(knitr.kable.NA = '-')
+options(digits = 3)
+labs = knitr::all_labels()
+labs = labs[!labs %in% c("setup", "llm_appendix", "allcode")]
+```
+
+```{r load-libraries-data, include=F}
+# clear environment
+rm(list=ls())
+
+# load relevant packages
+library(dplyr)      # data frame manipulation
+library(gtsummary)  # table summaries
+library(dagR)       # DAG simulation
+library(broom)      # model coefficient table
+library(knitr)      # pretty tables
+
+# load data
+sbias <- read.csv("../data/sexbias.csv")
+sbias <- sbias %>% select(-1) %>% mutate_all(as.factor)
+
+asbt <- read.csv("../data/asbestos.csv") 
+asbt <- asbt %>% select(-1) %>% mutate_all(as.factor)
+```
+
+
+## Hypothetical Pharmacuetical Trial
+
+1. A pharmaceutical company has run a randomized controlled trial of a drug intended for patients with symptomatic infection to prevent progression to severe disease.  Assume that males with symptomatic infection are substantially more likely to progress to severe disease than females.  In the trial, treatment vs. placebo was randomly assigned, with males and females each evenly divided between the treatment vs. placebo groups.  You can also assume the treatment is effective – it does reduce the chances of severe disease.
+
+a. Suppose the company chooses to summarize results with OR, and that the OR in males is the same as the OR in females.  If the marketing department wants to make their drug look as impressive as possible, would they prefer the crude OR or the sex-adjusted OR?  Why?
+
+They would prefer the sex-adjusted OR, because the crude/pooled OR is closer to 1, suggesting a weaker treatment effect than the adjusted OR. Below is an illustration of this example, where strata 1 and 2 have the same OR and the pooled OR is *attenuated* (reduced in effect) in comparison. See a comparable example in Figure 1, where risk of disease is higher in one strata than the other.  
+
+![Example of stratified and attenuated pooled odds ratio.](../images/pooledOR-vs-adjOR.png){width=40%}
+
+b. Which measure would you prefer for summarizing the effect of the treatment?  RR, RD, or OR?  Explain briefly.
+
+I like relative risk because it's a clear metric how much more the risk of disease is between the treated and untreated groups.
+I also like the language "reduce your risk by #%" that a risk difference allows.
+
+## Parameters of Logistic Regression
+
+2. A major public research university has been accused of discriminating against women in admission to its graduate programs.  A task force randomly selects 6 graduate programs (“majors”) from across the university to investigate the question. Use the dataset `sexbias` to investigate the following.
+
+```{r question-2}
+
+## ===============
+## Question 2
+## ===============
+sbias %>%
+  dplyr::mutate(ACCEPT = ifelse(ACCEPT=="no", "Not accepted", "Accepted")) %>%
+  gtsummary::tbl_summary(by = ACCEPT,
+                         label = list(SEX="Sex", MAJOR="Major")) %>%
+  bold_labels()
+```
+
+a. For the three variables in the dataset, draw a DAG representing the most appropriate scientific model to approach the question.
+
+```{r question-2a, fig.}
+dag <- dagR::dag.init(covs = 1, arcs = c(0, 1, 1, 2),
+                      y.name = "Acceptance", x.name = "Sex", 
+                      cov.names = "Major") %>% 
+  dag.draw()
+```
+
+b. Use logistic regression to examine the unadjusted association between sex and acceptance to graduate school.  Summarize the results in language suitable for the task force’s report.
+
+```{r question-2b}
+mod.lr <- glm(data=sbias, ACCEPT ~ SEX, family=binomial()) %>%
+  broom::tidy(exponentiate = TRUE, conf.int = TRUE)
+knitr::kable(mod.lr)
+```
+
+Sex = {0:male, 1:female}
+logodds(acceptance|sex) = B0 + B1*sex
+
+Then exp(B1) estimates the odds ratio of males to females. 
+
+c. Use logistic regression to examine the association between sex and acceptance to graduate school adjusted for “major”. Summarize the results in language suitable for the task force’s report.
+
+```{r}
+mod.lr2 <- glm(data=sbias, ACCEPT ~ SEX + MAJOR, family=binomial()) %>%
+  tidy(exponentiate = TRUE, conf.int = TRUE)
+kable(mod.lr2)
+```
+
+d. Are the results from b and c very different?  Why or why not? (Don’t answer in general terms, answer in terms of this dataset.)
+
+e. Which analysis best addresses the question of whether the University discriminates against women in graduate school admissions?
+
+f. Is there any other information you would have liked to have had for this analysis (e.g. any unmeasured potential confounders)?
+
+## Logistic Regression with Interaction
+
+3. The course CANVAS site has a file of (fictitious) data from a case-control study of lung-cancer examining two exposures, smoking and asbestos.  Asbestos is the exposure of interest.  Fit a logistic regression model with a main effect for asbestos exposure, a main effect for smoking, and an interaction term for asbestos exposure and smoking.  (This is “model A” in lecture 4.)
+
+```{r question-3}
+
+## ===============
+## Question 3
+## ===============
+asbt %>%
+  mutate(LUNGCA = ifelse(LUNGCA=="No", "No lung cancer", "Lung cancer")) %>%
+  tbl_summary(by = LUNGCA,
+              label = list(ASBESTOS="Asbestos", SMOKE="Smoke")) %>%
+  bold_labels()
+
+mod.lr3 <- glm(data=asbt, LUNGCA ~ ASBESTOS * SMOKE, family=binomial()) %>%
+  tidy(exponentiate = TRUE, conf.int = TRUE)
+kable(mod.lr3)
+```
+
+a. For each of the four regression parameters in the model:  what population quantity does the parameter estimate?  If the parameter does not estimate a population quantity, briefly explain why.
+
+`r mod.lr3[1,2]` CI: `r mod.lr3[1,6]` - `r mod.lr3[1,7]`
+
+`r mod.lr3[2,2]` CI: `r mod.lr3[2,6]` - `r mod.lr3[2,7]`
+
+`r mod.lr3[3,2]` CI: `r mod.lr3[3,6]` - `r mod.lr3[3,7]`
+
+`r mod.lr3[4,2]` CI: `r mod.lr3[4,6]` - `r mod.lr3[4,7]`
+
+b. According to the fitted model, what is the OR for asbestos among non-smokers?
+
+`r mod.lr3[2,2]` CI: `r mod.lr3[2,6]` - `r mod.lr3[2,7]`
+
+c. According to the fitted model, what is the OR for asbestos among smokers?
+
+`r mod.lr3[2,2]*mod.lr3[4,2]` 
+CI: `r mod.lr3[2,6]*mod.lr3[4,6]` - `r mod.lr3[2,7]*mod.lr3[4,7]`
+
+d.  Summarize the evidence that smokers and non-smokers have different ORs for asbestos. Write your answer in a few sentences suitable for a scientific publication.  
+`r mod.lr3[4,2]` CI: `r mod.lr3[4,6]` - `r mod.lr3[4,7]`
+
+e. One could instead estimate the OR for asbestos among smokers by fitting a simple logistic regression model using the subset of the data on smokers.  Do this.  Compare your point estimates and confidence intervals here and part c and comment on whether any similarities or differences are to be expected.
+
+```{r}
+mod.lr4 <- glm(data = subset(asbt, SMOKE=="Yes"),
+               LUNGCA ~ ASBESTOS, family=binomial()) %>%
+  tidy(exponentiate = TRUE, conf.int = TRUE)
+kable(mod.lr4)
+```
+
+`r mod.lr4[2,2]` CI: `r mod.lr4[2,6]` - `r mod.lr4[2,7]`
+
+f. Use an appropriate logistic regression model to estimate the smoking-adjusted OR for asbestos. Compare your results with b and c above.
+
+g. For the model in part f, perform a test of the null hypothesis that the smoking-adjusted odds ratio is 1.
+
+
+
+**End of report. Code appendix begins on the next page.**
+
+\pagebreak
+
+## Code Appendix
+
+```{r allcode, ref.label = knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+**End of document.**

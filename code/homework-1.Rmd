@@ -55,11 +55,10 @@ The following questions are related to the evaluation of a clinical trial in pat
 ## ===============
 # create "Table 1" summary
 aml %>%
-  dplyr::select(tx, cr, sex, age, fab, karn, wbc, plt, hgb, status) %>%
-  gtsummary::tbl_summary(by = tx, missing = "no") %>%
+  dplyr::select(tx, cr, sex:eval, status, bmtx, incl) %>%
+  gtsummary::tbl_summary(by = tx) %>%
   bold_labels()
 ```
-
 
 ## Measures of Association
 
@@ -97,6 +96,8 @@ In simple terms: the proportion of patients in our sample who reached complete r
 The **risk difference** of complete remission given exposure is `r round(rd.E, 3)`. We estimate the probability of reaching complete remission to differ between our treatment groups by approximately `r round(100*rd.E)`%, with the idarubicin-treated arm having greater chances of completing remission. 
 
 The **odds ratio** of complete remission given exposure is `r round(or.E, 3)`. We estimate the odds of reaching complete remission to be approximately `r round(or.E, 1)` times greater in the arm treated with idarubicin than in the arm treated with daunorubicin.
+
+I expect patients with acute myelogenous leukemia to be most interested in the risk difference associated with treatment, as it provides the most direct and meaningful interpretation in terms of the absolute change in risk due to treatment.
 
 3. Summarize the data in a pair of 2x2 tables as done in Lecture 2, where D is complete remission, E is treatment group, and the covariate is sex.
 
@@ -174,7 +175,6 @@ The subgroups that fashioned the two conditional logistic regression models form
 
 7.	Fit a logistic regression model with treatment arm, sex, and their interaction. Use the model to estimate the treatment effect in males, and compare to your result to 5(a). Use the model to estimate the treatment effect in females, and compare to your result in 5(b). Comment on the similarity or difference.  In general, when you are asked for a point estimate you should include a confidence interval; however, for this problem you are not required to provide confidence intervals.
 
-
 ```{r question-7, results=FALSE}
 
 ## ===============
@@ -191,35 +191,53 @@ tab_model(mod.lr4, title = "Logistic regression of complete remission",
 
 We estimate that the odds of complete AML remission is `r round(exp(coef4[2] + coef4[4]), 2)` times greater for a male population treated with idarubicin compared to a male population treated with daunorubicin (95% CI for odds ratio: `r round(exp(confint4[2,1] + confint4[4,1]), 2)` - `r round(exp(confint4[2,2] + confint4[4,2]), 2)`).
 
-Comparing two treated female populations, we estimate the odds of complete AML remission to be `r round(exp(coef4[2]), 1)` times greater for females receiving idarubicin than those receiving daunorubicin (95% CI for odds ratio: `r round(exp(confint4[2,1]), 2)` - `r round(exp(confint4[2,2]), 2)`).
+Comparing two treated female populations, we estimate the odds of complete AML remission to be `r round(exp(coef4[2]), 2)` times greater for females receiving idarubicin than those receiving daunorubicin (95% CI for odds ratio: `r round(exp(confint4[2,1]), 2)` - `r round(exp(confint4[2,2]), 2)`).
 
 8.
 
 (a) Write the population attributable risk (as given in Lecture 1) as a function of the rate of exposure P[E] and the relative risk of disease RR.
 
+\begin{align*}
+PAR = \frac{p_e \{\mathrm{P}(D \mid E) - \mathrm{P}(D \mid \overline{E})\}}{p_e \mathrm{P}(D \mid E) + (1-p_e)\mathrm{P}(D \mid \overline{E})}
+\end{align*}
+
+Expanding the denominator, then dividing the numerator and denominator by $\mathrm{P}(D \mid \overline{E})$, produces
+
+\begin{align*}
+PAR = \frac{p_e \{\mathrm{P}(D \mid E) - \mathrm{P}(D \mid \overline{E})\}} {p_e \{\mathrm{P}(D \mid E) - \mathrm{P}(D \mid \overline{E})\} + \mathrm{P}(D \mid \overline{E})}
+\end{align*}
+
+<!-- PAR = \frac{p_e \{RR-1\}}{p_e \{RR\} + (1-p_e)} -->
+
+\begin{align*}
+PAR = \frac{p_e \{RR-1\}} {p_e \{RR-1\} + 1}
+\end{align*}
+
+Where RR denotes the relative risk of disease associated with the exposure. Note that if we have conducted a case-control study of a rare exposure E, the RR associated with exposure is approximately equal to the odds ratio (OR) associated with exposure. Then,
+
+\begin{align*}
+PAR \approx \frac{p_e \{OR-1\}} {p_e \{OR-1\} + 1}
+\end{align*}
+
 (b) Suppose smokers have 22 times the risk of dying from lung cancer as non-smokers.  Consider a population of 35% smokers. Estimate the PAR for smoking and lung cancer death (point estimate only). Write a sentence presenting and interpreting the PAR.
+
+$PAR = \frac{(0.35) \{22-1\}}{(0.35) \{22-1\} + 1} = 0.880$
+
+In a population of 35% smokers, the proportion of the overall risk of fatal lung cancer that is due to smoking is 88%.
 
 (c) Suppose smokers have 22 times the risk of dying from lung cancer as non-smokers.  Consider a population of 5% smokers. Estimate the PAR for smoking and lung cancer death (point estimate only). Write a sentence presenting and interpreting the PAR.
 
+$PAR = \frac{(0.05) \{22-1\}}{(0.05) \{22-1\} + 1} = 0.512$
+
+In a population of 5% smokers, the proportion of the overall risk of fatal lung cancer that is due to smoking is 51.2%.
+
 (d) Comment on the difference between the PAR in (b) and (c).
 
-```{r question-8}
+If smokers have a higher risk of dying from lung cancer than non-smokers, then in populations with more smokers, a larger share of lung cancer deaths will be due to smoking. We found this to be true when comparing two the populations of (b) and (c). 
 
-## ===============
-## Question 8
-## ===============
+9. Consider the R script `sim_casecontrolsampling.R` discussed in the first day of class.  A statistic not considered is the risk difference, RD.  Would you expect the RD computed on a case-control sample to estimate the RD in the population?  Why or why not?  You should be able to answer this question based on the principles already discussed.  If you want to, you can modify the my.summary function to include the RD and examine the results.  However, this is not required for the homework.
 
-```
-
-9. Consider the R script `sim_casecontrolsampling.R` discussed in the first day of class.  A statistic not considered is the risk difference RD.  Would you expect the RD computed on a case-control sample to estimate the RD in the population?  Why or why not?  You should be able to answer this question based on the principles already discussed.  If you want to, you can modify the my.summary function to include the RD and examine the results.  However, this is not required for the homework.
-
-```{r question-9}
-
-## ===============
-## Question 9
-## ===============
-
-```
+We would not expect the a population's risk difference associated with exposure to be estimated by a case-control sample because such studies sample a fixed number of cases and controls, which does not reflect the actual prevalence of disease.
 
 **End of report. Code appendix begins on the next page.**
 
