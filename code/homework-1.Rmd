@@ -213,7 +213,7 @@ PAR = \frac{p_e \{\mathrm{P}(D \mid E) - \mathrm{P}(D \mid \overline{E})\}} {p_e
 PAR = \frac{p_e \{RR-1\}} {p_e \{RR-1\} + 1}
 \end{align*}
 
-Where RR denotes the relative risk of disease associated with the exposure. Note that if we have conducted a case-control study of a rare exposure E, the RR associated with exposure is approximately equal to the odds ratio (OR) associated with exposure. Then,
+Where RR denotes the relative risk of disease associated with the exposure. Note that if we have conducted a case-control study of a rare disease D, the RR associated with exposure is approximately equal to the odds ratio (OR) associated with exposure. Then,
 
 \begin{align*}
 PAR \approx \frac{p_e \{OR-1\}} {p_e \{OR-1\} + 1}
