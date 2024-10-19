@@ -54,7 +54,7 @@ expit <- function(x) {
 
     If it helps you to be more concrete, assume that D is a type of cancer, the exposure is a genetic variant, and the hypothesis is that having one or more copies of the genetic variant increases a person's risk of the cancer.
 
-```{r, fig.cap="Example cancer data"}
+```{r question-1, fig.cap="Example cancer data"}
 
 ## ===============
 ## Question 1
@@ -124,7 +124,7 @@ In this study, $\pi = \frac{1}{9} \cdot \frac{0.9}{0.1} = 1$; therefore, $\hat \
 
 4.  Suppose you have data for 90 people on a continuous explanatory variable X and a binary outcome D, summarized in the following table.
 
-```{r}
+```{r question-4}
 
 ## ===============
 ## Question 4
@@ -132,7 +132,7 @@ In this study, $\pi = \frac{1}{9} \cdot \frac{0.9}{0.1} = 1$; therefore, $\hat \
 q4data <- data.frame(X = c(0,0,1,1,2,2),
                      D = rep(c("no","yes"),3),
                      Frequency = c(20,10,15,15,10,20))
-knitr::kable(q4data)
+knitr::kable(q4data, caption="Question 4 Data")
 
 q4data <- q4data %>% tidyr::uncount(Frequency)
 ```
@@ -202,7 +202,7 @@ ggplot(q4res, aes(as.factor(X), logoddsD)) +
 
 The log odds across X are linear. This is because the X=0 and X=2 groups have inverted odds of disease and the X=1 group has 1:1 odds of disease.
 
-5.  Suppose you have data for 900 people on a continuous explanatory variable X and a binary outcome D, summarized in Table 5 below.
+5.  Suppose you have data for 900 people on a continuous explanatory variable X and a binary outcome D, summarized in Table 4 below.
 
     Fit a simple logistic model to these data. Compare and contrast the results with your results from Q4. Your comparison should include regression parameter estimates, standard errors, and confidence intervals.
 
@@ -214,7 +214,7 @@ The log odds across X are linear. This is because the X=0 and X=2 groups have in
 q5data <- data.frame(X = c(0,0,1,1,2,2),
                      D = rep(c("no","yes"),3),
                      Frequency = 10*c(20,10,15,15,10,20)) 
-kable(q5data)
+kable(q5data, caption="Question 5 Data")
 q5data <- q5data %>% tidyr::uncount(Frequency)
 ```
 
@@ -272,7 +272,7 @@ rbind(
 q6data <- data.frame(X = c(-1,0,0,1,1,2,2,3),
                      D = c("no", rep(c("no","yes"),3), "yes"),
                      Frequency = c(30,20,10,15,15,10,20,30)) 
-kable(q6data)
+kable(q6data, caption="Question 6 Data")
 q6data <- q6data %>% tidyr::uncount(Frequency)
 ```
 
@@ -315,7 +315,7 @@ $\hat{logit}(p) =$ `r coefs3[1]` $+$ `r coefs3[2]` $\cdot X$ is our model of the
 
 (c) According to the fitted model, what is the probability of D for individuals with X=0? Why is this different from Question 4 (c)?
 
-$\hat P(D=1|X=0)=$ `r q6_probs[2]` . Logistic regression is fit from maximum likelihood estimation (MLE), which tries to best estimate the odds of all subpopulations. See in Figure **this one** that the model best fits the probability, odds, and log odds of disease for each subpopulation. 
+$\hat P(D=1|X=0)=$ `r q6_probs[2]` . Logistic regression is fit from maximum likelihood estimation (MLE), which tries to best estimate the odds of all subpopulations. See in the figure below that the model best fits the probability, odds, and log odds of disease for each subpopulation. The model of log odds changes between the Question 4 and 6 data with the addition of more subpopulations of X.
 
 ```{r question-6c, fig.asp=1, fig.cap="Grid of plotted estimates"}
 # create grid of plots
@@ -356,9 +356,8 @@ gridExtra::grid.arrange(gg, gg4, gg2, gg5, gg3, gg6)
 
 (d) According to the fitted model, what is the probability of D for individuals with X=1? How does this compare with Q4D? Why does this make sense?
 
-$\hat P(D=1|X=1)=$ `r q6_probs[3]`
+$\hat P(D=1|X=1)=$ `r q6_probs[3]` . This is reasonable because the center of the fit is the most stable and the data has not seriously changed from Question 4.
 
-**Answer here**
 
 **End of report. Code appendix begins on the next page.**
 
