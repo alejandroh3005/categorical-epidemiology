@@ -3,22 +3,22 @@ title: "BIOST 536: Homework 4"
 subtitle: "Department of Biostatistics @ University of Washington"
 # author: 
 # - Alejandro Hernandez
-date: "October 25, 2024"
+date: "October 26, 2024"
 output: pdf_document
 ---
 
-```{r setup, include=F}
+```{r setup,include=F}
 # clear environment
 rm(list=ls())
 
 # setup options
-knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 options(knitr.kable.NA = '-', digits = 2)
 labs = knitr::all_labels()
-labs = labs[!labs %in% c("setup", "llm_appendix", "allcode")]
+labs = labs[!labs %in% c("setup", "allcode")]
 ```
 
-```{r load-libraries-data, include=F}
+```{r load-libraries-data}
 # load relevant packages
 library(dplyr)      # data frame manipulation
 library(ggplot2)
@@ -34,7 +34,7 @@ esph <- esophcts
 # names(esph)
 # dim(esph)
 
-# create variables for disease, exposure, and covariates
+# define a binary exposure variable and age group covariate
 esph$bicider <- ifelse(esph$cider > 10, 1, 0)  # cider consumption >10 g/day
 esph$agegp <- as.factor(esph$agegp)
 levels(esph$agegp) <- c("25-34", "35-44", "45-54", "55-64", "65-74", "75+")
@@ -71,13 +71,15 @@ esph %>%
 
 ## fit logistic regression model of risk of esophageal cancer
 mod <- rigr::regress("odds", case ~ bicider + as.numeric(agegp), esph)
+# the selected coefficients are already exponentiated 
 coef <- coef(mod)[,c(4:6,8)]
 # or, using glm()
 # mod <- glm(case ~ bicider + as.numeric(agegp), family=binomial(), esph)
 # coef <- cbind('e(Est)'=coef(mod), confint(mod)) %>% exp()
+
 ```
 
-Based on a logistic regression model adjusting for ordinal age levels (see Table 1), the odds of esophageal cancer for patients consuming over 10 grams of cider per day  is `r coef[2,1]` times (95% CI: `r coef[2,2]`-`r coef[2,3]`; Robust Wald test p-value<0.001) the odds for patients of the same age level consuming 10 or less grams of cider per day. This provides evidence that daily cider consumption beneath 10 g offers health benefit over consumption above 10 g with adjustment of age level
+Based on a logistic regression model with grouped-linear adjustment of age (see Table 1), the odds of esophageal cancer for patients consuming over 10 grams of cider per day  is `r coef[2,1]` times (95% robust Wald CI: `r coef[2,2]`-`r coef[2,3]`; Wald test p-value<0.001) the odds for patients of the same age level consuming 10 or less grams of cider per day. This provides evidence that daily cider consumption beneath 10 g offers health benefit over consumption above 10 g with grouped-linear adjustment of age.
 
 2. Fit a logistic model relating binary cider exposure (> 10 g/day) to the risk of esophageal cancer using indicator variables to adjust for age and the six age groups in the variable `agegp`. Report the odds ratio and 95% confidence interval for binary cider exposure. Optional: Write a sentence appropriate for the results section of a scientific paper reporting the results of this analysis. 
 
@@ -92,13 +94,17 @@ coef2 <- coef(mod2)[,c(4:6,8)]
 
 ```
 
-Based on a logistic regression model adjusting for nominal age groups (see Table 1), the odds of esophageal cancer for patients consuming over 10 grams of cider per day  is `r coef2[2,1]` times (95% CI: `r coef2[2,2]`-`r coef2[2,3]`; Robust Wald test p-value<0.001) the odds for patients of the same age group consuming 10 or less grams of cider per day. This provides evidence that daily cider consumption beneath 10 grams offers health benefit over consumption of 10 or more grams with adjustment of age group.
+Based on a logistic regression model adjusting for age groups (see Table 1), the odds of esophageal cancer for patients consuming over 10 grams of cider per day  is `r coef2[2,1]` times (95% robust Wald CI: `r coef2[2,2]`-`r coef2[2,3]`; Wald  test p-value<0.001) the odds for patients of the same age group consuming 10 or less grams of cider per day. This provides evidence that daily cider consumption beneath 10 grams offers health benefit over consumption of 10 or more grams with adjustment of age group.
 
 3. 
 
 (a) Compare the results for the exposure variable in the Q1 and Q2 analyses. Are results similar or very different?
 
+Our estimate of the age-adjusted OR associated with exposure are similar when age is treated as an ordinal numeric variable versus a nominal categorical variable. The more flexible model from Q2 yields a slightly attenuated effect size. Considering estimate uncertainty, the Q2 model provides a slightly narrower confidence interval. At a significance level $\alpha=0.5$, both models indicate that patients consuming over 10 grams of cider per day have statistically significant higher odds of developing esophageal cancer.
+
 (b) (Optional) Which result would you prefer to report in a scientific article, and why?
+
+Encoding age as a nominal variable, rather than an ordinal one, is preferred as it allows the estimated chances of esophageal cancer to differ across age groups.
 
 4. Fit a logistic model relating binary cider exposure (> 10 g/day) to the risk of esophageal cancer using linear adjustment for age (as a continuous variable). Report the odds ratio and 95% confidence interval for binary cider exposure. Optional: Write a sentence appropriate for the results section of a scientific paper reporting the results of this analysis.
 
@@ -113,7 +119,7 @@ coef3 <- coef(mod3)[,c(4:6,8)]
 
 ```
 
-Based on a logistic regression model adjusting for age, the odds of esophageal cancer for patients consuming over 10 grams of cider per day  is `r coef3[2,1]` times (95% CI: `r coef3[2,2]`-`r coef3[2,3]`; Robust Wald test p-value<0.001) the odds for patients of the same age consuming 10 or less grams of cider per day. This provides evidence that daily cider consumption beneath 10 grams offers health benefit over consumption of 10 or more grams with adjustment of age group.
+Based on a logistic regression model adjusting for age, the odds of esophageal cancer for patients consuming over 10 grams of cider per day  is `r coef3[2,1]` times (95% robust Wald CI: `r coef3[2,2]`-`r coef3[2,3]`; Wald test p-value<0.001) the odds for patients of the same age consuming 10 or less grams of cider per day. This provides evidence that daily cider consumption beneath 10 grams offers health benefit over consumption of 10 or more grams with adjustment of age.
 
 5. Fit a logistic model relating binary cider exposure (> 10 g/day) to the risk of esophageal cancer using quadratic adjustment for age (as a continuous variable). Report the odds ratio and 95% confidence interval for binary cider exposure.
 
@@ -123,7 +129,7 @@ Based on a logistic regression model adjusting for age, the odds of esophageal c
 ## ===============
 
 ## fit logistic regression model of risk of esophageal cancer
-mod4 <- regress("odds", case ~ bicider + poly(age,4), esph)
+mod4 <- regress("odds", case ~ bicider + poly(age,2), esph)
 coef4 <- coef(mod4)[,c(4:6,8)]
 # or, using glm()
 # mod <- glm(case ~ bicider + I(age^4), family=binomial(), esph)
@@ -131,7 +137,7 @@ coef4 <- coef(mod4)[,c(4:6,8)]
 
 ```
 
-Based on a logistic regression model with quadratic adjustment for age, the odds of esophageal cancer for patients consuming over 10 grams of cider per day  is `r coef4[2,1]` times (95% CI: `r coef4[2,2]`-`r coef4[2,3]`; Robust Wald test p-value<0.001) the odds for patients of the same age consuming 10 or less grams of cider per day. This provides evidence that daily cider consumption beneath 10 grams offers health benefit over consumption of 10 or more grams with adjustment of age group.
+Based on a logistic regression model with quadratic adjustment for age, the quadratic-age-adjusted odds of esophageal cancer for patients consuming over 10 grams of cider per day  is `r coef4[2,1]` times (95% robust Wald CI: `r coef4[2,2]`-`r coef4[2,3]`; Wald test p-value=0.0011) the odds for patients consuming 10 or less grams of cider per day. This provides evidence that daily cider consumption beneath 10 grams offers health benefit over consumption of 10 or more grams with quadratic adjustment of age.
 
 6. 
 
@@ -148,43 +154,67 @@ coef5 <- coef(mod5)[,c(4:6,8)]
 
 ```
 
-Based on a logistic regression model linear spline adjusting for age, the odds of esophageal cancer for patients consuming over 10 grams of cider per day  is `r coef4[2,1]` times (95% CI: `r coef4[2,2]`-`r coef4[2,3]`; Robust Wald test p-value<0.001) the odds for patients of the same age consuming 10 or less grams of cider per day. This provides evidence that daily cider consumption beneath 10 grams offers health benefit over consumption of 10 or more grams with linear spline adjustment of age.
+Based on a logistic regression model with linear spline adjustment for age, the linear-spline-adjusted odds of esophageal cancer for patients consuming over 10 grams of cider per day  is `r coef5[2,1]` times (95% robust Wald CI: `r coef5[2,2]`-`r coef5[2,3]`; Wald test p-value<0.001) the odds for patients consuming 10 or less grams of cider per day. This provides evidence that daily cider consumption beneath 10 grams offers health benefit over consumption of 10 or more grams with linear spline adjustment of age.
 
-(b) (Optional) Write 1-2 sentences describing the analysis (not the results) that would be appropriate for the methods section of a scientific paper.
+<!-- (b) (Optional) Write 1-2 sentences describing the analysis (not the results) that would be appropriate for the methods section of a scientific paper. -->
 
 7.
 
 (a) Compare the OR estimates from Q4, Q5, and Q6. Are your results similar or very different?
 
-OR associated with exposure, with linear adjustment for age: `r coef3[2,1]`
-OR associated with exposure, with quadratic adjustment for age : `r coef4[2,1]`
-OR associated with exposure, with linear spline adjustment for age : `r coef5[2,1]`
+The estimated age-adjusted OR associated with exposure is very similar across linear adjustment for age (`r coef3[2,1]`), quadratic adjustment for age (`r coef4[2,1]`), or linear spline adjustment for age (`r coef5[2,1]`). The latter two are most similar and both produce narrower confidence intervals than the first. 
+
+At a significance level $\alpha=0.5$, all three models agree that patients consuming over 10 grams of cider per day have statistically significant higher odds of developing esophageal cancer.
 
 (b) (Optional) Which approach would you prefer if you were studying this exposure and wanted to adjust for age as a potential confounder, and why?
 
+For the strongest precision and most flexibility in modeling age, I prefer the linear spline model.
+
 8. For each model in Q1 through Q6, how many degrees of freedom are used to include age in the model? That is, how many model parameters are used for age? Include the model intercept in your count.
 
-Q1: $logit(p)=\beta_0+\beta_1AgeG$
+Q1: $logit(p)=\beta_0+\beta^*BiCider+\beta_1AgeG$ requires 2 df to include age.
 
-Q2: $logit(p)=\beta_0+\beta_1AgeG_2+\beta_2AgeG_3+\beta_3AgeG_4+\beta_4AgeG_5+\beta_5AgeG_6$
+Q2: $logit(p)=\beta_0+\beta^*BiCider+\beta_1AgeG_2+\beta_2AgeG_3+\beta_3AgeG_4+\beta_4AgeG_5+\beta_5AgeG_6$ requires 6 df to include age.
 
-Q4: $logit(p)=\beta_0+\beta_1Age$
+Q4: $logit(p)=\beta_0+\beta^*BiCider+\beta_1Age$ requires 2 df to include age.
 
-Q5: $logit(p)=\beta_0+\beta_1Age+\beta_2Age^2+\beta_3Age^3+\beta_4Age^4$
+Q5: $logit(p)=\beta_0+\beta^*BiCider+\beta_1Age+\beta_2Age^2$ requires 3 df to include age.
 
-Q6: $logit(p)=\beta_0+\beta_1Age+\beta_2(Age-35)^++\beta_3(Age-45)^++\beta_3(Age-55)^++\beta_4(Age-65)^++\beta_5(Age-75)^+$
+Q6: $logit(p)=\beta_0+\beta^*BiCider+\beta_1Age+\beta_2(Age-35)^++\beta_3(Age-45)^++\beta_3(Age-55)^++\beta_4(Age-65)^++\beta_5(Age-75)^+$ requires 6 df to include age.
 
 9. For each question (a)-(e), if you say that models are nested, write out the full and “reduced” models, and give the restrictions on the full model that yield the reduced model.
 
 (a) Are the models in Q1 and Q2 nested?
 
+Yes, the full and reduced models are 
+
+Full: $logit(p)=\beta_0+\beta^*BiCider+\beta_1AgeG$
+
+Reduced: $logit(p)=\beta_0+\beta^*BiCider+\beta AgeG_2+2\times\beta AgeG_3+3\times\beta AgeG_4+4\times\beta AgeG_5+5\times\beta AgeG_6$
+
 (b) Are the models in Q1 and Q4 nested?
+
+No, the two models are not nested.
 
 (c) Are the models in Q4 and Q5 nested?
 
+Yes, the full and reduced models are 
+
+Full: $logit(p)=\beta_0+\beta^*BiCider+\beta_1Age+\beta_2Age^2$
+
+Reduced: $logit(p)=\beta_0+\beta^*BiCider+\beta_1Age$
+
 (d) Are the models in Q4 and Q6 nested?
 
+Yes, the full and reduced models are 
+
+Full: $logit(p)=\beta_0+\beta^*BiCider+\beta_1Age+\beta_2(Age-35)^++\beta_3(Age-45)^++\beta_3(Age-55)^++\beta_4(Age-65)^++\beta_5(Age-75)^+$
+
+Reduced: $logit(p)=\beta_0+\beta^*BiCider+\beta_1Age$
+
 (e) Are the modest in Q5 and Q6 nested?
+
+No, the two models are not nested.
 
 **End of report. Code appendix begins on the next page.**
 
