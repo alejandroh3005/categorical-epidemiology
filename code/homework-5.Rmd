@@ -1,0 +1,141 @@
+---
+title: "BIOST 536: Homework 5"
+subtitle: "Department of Biostatistics @ University of Washington"
+# author: 
+# - Alejandro Hernandez
+date: "8 November 2024"
+output: pdf_document
+---
+
+```{r setup,include=F}
+# clear environment
+rm(list=ls())
+
+# setup options
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+options(knitr.kable.NA = '-', digits = 2)
+labs = knitr::all_labels()
+labs = labs[!labs %in% c("setup", "allcode")]
+```
+
+```{r load, results = 'hide'}
+# load relevant packages
+library(dplyr)      # data manipulation
+# library(ggplot2)    # data visualization
+# library(gtsummary)  # data summary
+library(broom)      # tidy tables
+# library(knitr)      # pretty tables
+library(rigr)       # regression
+library(lmtest)     # testing linear models
+
+# load data
+fhs <- read.csv("../data/framingham_V2.csv")
+# ls(); names(fhs); dim(fhs)
+
+## handle missing data
+# identify columns with missing data
+fhs %>% is.na %>% colSums %>% subset(.>0)
+# flag rows with missing data relevant to our analysis
+fhs$omit <- ifelse(is.na(fhs$education) | is.na(fhs$totChol) | is.na(fhs$BMI), 1, 0)
+# 4240 total = 171 incomplete + 4069 complete
+fhs <- fhs %>% subset(omit == 0)
+
+```
+
+## 1. Effect of Education Level
+
+Suppose we are interested in whether there is an association between education and risk of CHD within 10 years (`TenYearCHD`). `Education` is a 4-level ordinal variable, where 1 = less than high school; 2 = high school diploma/GED; 3 = some college/vocational school; and 4 = college degree (BA,BS) or more. Consider a logistic regression model that treats education as a categorical (indicator) exposure variable and adjusts for the confounders: sex, age, BMI, current smoking status, total cholesterol, and systolic blood pressure (`male`, `age`, `BMI`, `currentSmoker`, `totChol`, `sysBP`).
+
+a. Fit the above described model and interpret the coefficients of the education variable.
+
+```{r question-1a}
+## ===============
+## Question 1
+## ===============
+mod <- glm(TenYearCHD ~ as.factor(education) + male + age + BMI + 
+             currentSmoker + totChol + sysBP, family=binomial(), data=fhs)
+coefs <- broom::tidy(mod, exponentiate = TRUE)
+coefs
+```
+
+We fit a logistic regression of odds of ten year risk of CHD, predicted by categorical education level, binary sex, continuous age, continuous BMI, binary smoking status, continuous total cholesterol, and continuous systolic blood pressure.
+
+
+
+b. State the null hypothesis for the association between education and outcome for this model. How do we state the alternative hypothesis?
+
+
+
+c. Provide a statistical test that you could use to test the hypothesis in 1b and how many degrees of freedom does this test have? (Hint: there is more than one valid test to choose from)
+
+d. Perform the statistical test in 1c and state your conclusions.
+
+```{r question-1d}
+mod.null <- glm(TenYearCHD ~ male + age + BMI + currentSmoker + totChol + sysBP,
+                family=binomial(), data=fhs)
+
+lmtest::lrtest(mod, mod.null)
+```
+
+e. If you were only looking at the individual coefficients for the education levels in this model, would you have been able to make the same conclusion as in 1d? Why or why not?
+
+f. Suppose you treated education as a grouped linear variable instead, write down the model for logit(p) using the same confounders in part 1a.
+
+$logit(p) = \beta_0 + \beta_1 \cdot education + \beta_2 \cdot male + \beta_3 \cdot age + \beta_4 \cdot BMI + \beta_5 \cdot currentSmoker + \beta_6 \cdot totChol + \beta_7 \cdot sysBP$
+
+g. Fit the model in 1f and state your conclusions about whether there is a linear trend in the association between education and CHD outcome.
+
+```{r question-1g}
+mod2 <- regress("odds", data = fhs,
+                TenYearCHD ~ as.numeric(education) + male + age + BMI + currentSmoker + totChol + sysBP)
+mod2
+
+```
+
+h. Can you do a likelihood ratio test to compare the model in 1f to the model with education as a categorical variable? If yes, how many degrees of freedom does this test have?
+
+## 2. Effect of Body-Mass-Index (BMI)
+
+Now suppose we are interested in the same outcome, but with BMI as the exposure, and considering the categorical education variable and all other covariates from the model fit in 1a as confounders.
+
+a. Treating BMI as a continuous variable, test whether there is a linear association between BMI and
+the outcome.
+
+```{r question-2a}
+
+```
+
+b. Create a 4-level ordinal variable `BMIcat` that categorizes the level of obesity according to standard cutoffs from the NHANES, where `BMIcat`=1 if BMI<18; `BMIcat`=2 if 18<=BMI<30; `BMIcat`=3 if 30<=BMI<35; and `BMIcat`=4 if BMI>=35. Fit a model that uses this grouped exposure variable for the association between BMI and outcome that adjusts for same covariates but assumes the least amount of structure between the association of BMI and outcome.
+
+
+```{r question-2b}
+fhs <- fhs %>% 
+  mutate(BMIcat = cut(BMI,
+                      right = FALSE, include.lowest = TRUE,  # [a,b)
+                      breaks = c(min(BMI),18,30,35,max(BMI)))) #,
+                      # labels = 1:4))
+```
+
+c. Write down the null hypothesis that there is no association between BMIcat and outcome. Perform a statistical test of this hypothesis and state your conclusions. Is it different from 2a?
+
+d. Calculate the OR and 95% confidence interval for a 2-unit increase in BMI cat.
+
+e. Refit the same model in 2b, but now using these centered continuous variables: age centered at 60, systolic blood pressure centered at 140, and total cholesterol centered at 200, and leaving remaining other variables the same. What is the interpretation of the intercept in this model compared to the one fit in 2b?
+
+f. Make a plot of logit(p) versus BMIcat using the model in 2e, for a female non-smoker aged 60 years with less than high school education, systolic blood pressure =140 and total cholesterol = 200. Looking at this plot, is there a suggestion that there is a non-linear association between BMI and logit (p)?
+
+g. Fit a model that treats BMI as continuous but fits a nonlinear association (your choice) between BMI and outcome, adjusting for same confounders as in 2a. In this model, perform a test for whether there is an association between BMI and outcome and state your conclusion.
+
+h. Optional: can you plot the non-linear association you found in 2g.
+
+
+**End of report. Code appendix begins on the next page.**
+
+\pagebreak
+
+## Code Appendix
+
+```{r allcode, ref.label = knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+**End of document.**

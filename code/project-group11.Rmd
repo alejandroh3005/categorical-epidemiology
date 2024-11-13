@@ -1,0 +1,112 @@
+---
+title: "BIOST 536 Project: Group 1"
+subtitle: "Department of Biostatistics @ University of Washington"
+# author: 
+# - Alejandro Hernandez
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup,include=F}
+# clear environment
+rm(list=ls())
+
+# setup options
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+options(knitr.kable.NA = '-', digits = 2)
+labs = knitr::all_labels()
+labs = labs[!labs %in% c("setup", "allcode")]
+```
+
+```{r load, results = 'hide'}
+## load relevant packages
+library(dplyr)      # data manipulation
+library(ggplot2)    # data visualization
+# library(gtsummary)  # data summary
+library(broom)      # tidy tables
+library(knitr)      # pretty tables
+# library(rigr)       # regression
+# library(lmtest)     # testing linear models
+
+## load data
+load("../data/tbdata.RData")
+tbc <- tbdata
+# dim(tbc); names(tbc)
+# rename categorical levels
+tbc <- tbc %>%
+  mutate(case = ifelse(case == 1, "case", "control"),
+         lowEducation = ifelse(lowEducation == 1, "low", "not low"),
+         male = ifelse(male == 1, "male", "female"),
+         smoke = ifelse(smoke == 1, "smoker", "non-smoker"),
+         hospAdmission = ifelse(hospAdmission == 1, "admitted", "not admitted"),
+         BCGscar = ifelse(BCGscar == 1, "vaccinated", "not vaccinated"),
+         workOutHome = ifelse(workOutHome == 1, "outside home", "not outside home"),
+         BCGscar = ifelse(BCGscar == 1, "vaccinated", "not vaccinated"))
+head(tbc)
+
+# handle missing data
+anyNA(tbc)  # no missing data
+
+```
+
+## Background
+
+Pulmonary tuberculosis (TB) is a major public health problem that impacts millions of individuals worldwide. Despite significant advancements in TB prevention and treatment, we have a limited understanding of how social determinants of health impact pulmonary TB. The social determinants of health, with a focus on housing conditions, may play a major role on the transmission of airborne conditions. In this study, we aim to evaluate the impact of the number of windows in a home as a risk factor for pulmonary TB, with the goal of informing future intervention strategies. 
+
+## Study Design
+
+
+
+## Statistical Methods
+
+## Results
+
+### Logistic regression
+
+```{r modeling}
+## prepare a sub-sample to test code is running properly 
+# randomly select 100 observations to just build a coding pipeline 
+# (we won't interpret results yet)
+tbc <- tbc[sample(x = nrow(tbc), size = 100),]
+
+## logistic regression
+# model a patient's log odds of TB
+mod <- glm(as.factor(case) ~ as.factor(windowNo) + male + lowEducation + income,
+           family = binomial, data = tbc)
+# output model coefficients
+coef <- broom::tidy(mod, conf.int = TRUE, exponentiate = TRUE) 
+coef %>%
+  select(c(Term = term, Estimate = estimate, SE = std.error, 
+           'p-value' = p.value, ConfLow = conf.low, ConfHigh = conf.high)) %>%
+  knitr::kable(caption = "Estimated coefficients of logistic regression",
+               ndigits = 2)
+```
+
+### Evaluation
+
+```{r evaluation}
+# plot logit(p) across covariates
+
+```
+
+
+### Hypothesis testing
+
+```{r hypothesis-testing}
+
+```
+
+
+## Discussion
+
+
+**End of report. Code appendix begins on the next page.**
+
+\pagebreak
+
+## Code Appendix
+
+```{r allcode, ref.label = knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+**End of document.**

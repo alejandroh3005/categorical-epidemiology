@@ -1,0 +1,294 @@
+---
+title: "BIOST 536: Homework 6"
+subtitle: "Department of Biostatistics @ University of Washington"
+# author: 
+# - Alejandro Hernandez
+date: "15 November 2024"
+output: pdf_document
+---
+
+
+```{r setup,include=F}
+# clear environment
+rm(list=ls())
+
+# setup options
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+options(knitr.kable.NA = '-', digits = 2)
+labs = knitr::all_labels()
+labs = labs[!labs %in% c("setup", "allcode")]
+```
+
+```{r load, results = 'hide'}
+# load relevant packages
+library(dplyr)      # data manipulation
+library(ggplot2)    # data visualization
+library(gtsummary)  # data summary
+library(broom)      # tidy tables
+# library(knitr)      # pretty tables
+# library(rigr)       # regression
+
+# load data
+svd <- read.csv("../data/solvd_simulated.csv")
+ls(); names(svd); dim(svd)
+
+str(svd)
+
+## handle missing data
+anyNA(svd)  #no missing data
+```
+## Background
+
+The Studies of Left Ventricular Dysfunction (SOLVD) trials were two large randomized placebo-controlled trials of the efficacy of enalapril, an angiotensin converting enzyme (ACE) inhibitor, for the treatment and prevention of congestive heart failure to improve survival in patients with a weak left ventricular ejection fraction [1]. The original analyses were based on a time-to-event outcome; however, for the purposes of this homework, we consider a simulated version of the data that was based on this study but uses a binary version of the death outcome (`I_death`, 1=yes, 0=no) that ignores the differential length of follow-up. Covariates in this dataset include the treatment arm indicator (`I_ace`, 1=ACE Inhibitor, 0=Placebo control) and the baseline characteristics: sex (`I_sex`), age in years (`age`), left ejection fraction (`ef`), and an indicator of whether they had diabetes (`I_dm`). Please use the **sovld_simulated.csv** data set to answer the following set of questions.
+
+REFERENCE
+[1] SOLVD Investigators. Studies of left ventricular dysfunction (SOLVD)—rationale, design and methods: two trials that evaluate the effect of enalapril in patients with reduced ejection fraction. The American Journal of Cardiology. 1990 Aug 1;66(3):315-22.
+
+## Data
+
+```{r summary}
+## create labelled data
+svd_labelled <- svd %>%
+  dplyr::mutate(
+    Outcome = ifelse(I_death == 1, "Died", "Survived"),
+    Treatment = ifelse(I_ace == 1, "ACE inhibitor", "Placebo control"),
+    Sex = ifelse(I_sex == 1, "Male", "Female"),
+    Age = age,
+    Diabetes = ifelse(I_dm == 1, "Diabetic", "Not Diabetic"),
+    EjectionFraction = ef,
+    .keep = "none")
+
+## create Table 1 summary
+gtsummary::tbl_summary(svd_labelled, by = Outcome) %>%
+  add_overall()
+```
+
+
+We have sufficient sample sizes to model odds of death with logistic regression.
+
+## Assignment
+
+1. 
+
+Use logistic regression to assess the unadjusted effect of the ACE inhibitor in this trial on survival (i.e. on the death outcome). Provide the odds ratio (OR) and confidence interval.
+
+```{r question-1, results='hide'}
+## ===============
+## Question 1
+## ===============
+
+# model odds of death
+mod <- glm(I_death ~ I_ace, family = binomial, data = svd)
+coef <- broom::tidy(mod, conf.int = TRUE, exponentiate = TRUE) %>% 
+  dplyr::rename(OR = estimate)
+
+# get estimated OR associated with ACE inhibitor
+cbind(coef[2, c(2,7,6,5)])
+
+```
+
+2. 
+
+Suppose in planning the study, the investigators hypothesized that age, sex, ejection fraction and diabetes were all potential precision variables. What would need to be true about the association with outcome and exposure for these variables to be precision variables? Does the data seem to support the idea that each of these variables might be useful as precision variables? State your reasoning.
+
+Precision variables, introduced by linear regression, are variables that (1) are not directly associated with the predictor of interest, (2) causally affect the outcome, and (3) **???**. They may reduce a model's standard error and improve estimate precision (through narrower confidence intervals).
+
+This concept extends to logistic regression for randomized trials, although an important caveat is that inclusion of a precision variable does not guarantee reduced standard errors. However, they generally increase effect size estimates and model power.
+
+We can evaluate age, sex, ejection fraction and diabetes as potential precision variables by testing if they satisfy these criteria, both scientifically and statistically.
+
+```{r question-2, results='hide'}
+## ===============
+## Question 2
+## ===============
+
+#### === AGE === ####
+## association with Death
+svd_labelled %>% group_by(Outcome) %>% 
+  summarize(Mean = mean(Age), SD = sd(Age),
+            Median = median(Age), IQR = IQR(Age))
+ggplot(svd_labelled, aes(Age)) + geom_histogram() + facet_grid(vars(Outcome))
+# t-test works because approx. normal
+with(svd, t.test(I_death, I_sex))
+## association with Treatment
+svd_labelled %>% group_by(Treatment) %>% 
+  summarize(Mean = mean(Age), SD = sd(Age),
+            Median = median(Age), IQR = IQR(Age))
+ggplot(svd_labelled, aes(Age)) + geom_histogram() + facet_grid(vars(Treatment))
+# t-test works because approx. normal
+with(svd, t.test(I_ace, I_sex))
+## t-test for association with death, p-value: <2e-16
+## t-test for association with treatment, p-value: <2e-16
+
+#### === EJECTION FRACTION === ####
+## association with Death
+# frequencies
+svd_labelled %>% group_by(Outcome) %>% 
+  summarize(Mean = mean(EjectionFraction), SD = sd(EjectionFraction),
+            Median = median(EjectionFraction), IQR = IQR(EjectionFraction))
+# histograms
+ggplot(svd_labelled, aes(EjectionFraction)) + geom_histogram() + 
+  facet_grid(vars(Outcome))
+# t-test won't work because not approx. normal; use Wilcoxon 
+with(svd, wilcox.test(I_death, ef))
+## association with Treatment
+# frequencies
+svd_labelled %>% group_by(Treatment) %>% 
+  summarize(Mean = mean(EjectionFraction), SD = sd(EjectionFraction),
+            Median = median(EjectionFraction), IQR = IQR(EjectionFraction))
+# histograms
+ggplot(svd_labelled, aes(EjectionFraction)) + geom_histogram() + 
+  facet_grid(vars(Treatment))
+# t-test won't work because not approx. normal; use Wilcoxon 
+with(svd, wilcox.test(I_ace, ef))
+## Wilcoxon test for association with death, p-value: <2e-16
+## Wilcoxon test for association with treatment, p-value: <2e-16
+
+#### === SEX === ####
+## association with Death
+with(svd_labelled, table(Outcome, Sex) / nrow(svd_labelled))
+with(svd, chisq.test(I_death, I_sex, simulate.p.value = TRUE))
+## association with Treatment
+with(svd_labelled, table(Treatment, Sex) / nrow(svd_labelled))
+with(svd, chisq.test(I_ace, I_sex, simulate.p.value = TRUE))
+## chi-squared test for association with death, p-value: 0.5
+## chi-squared test for association with treatment, p-value: 0.3
+
+#### === DIABETES === ####
+## association with Death
+with(svd_labelled, table(Outcome, Diabetes) / nrow(svd_labelled))
+with(svd, chisq.test(I_death, I_dm, simulate.p.value = TRUE))
+## association with Treatment
+with(svd_labelled, table(Treatment, Diabetes) / nrow(svd_labelled))
+with(svd, chisq.test(I_ace, I_dm, simulate.p.value = TRUE))
+## chi-squared test for association with death, p-value: 0.0005
+## chi-squared test for association with treatment, p-value: 0.2
+```
+
+Diabetes is the only variable that meets the criteria of a precision variable, statistically.
+
+3. 
+
+Fit the model in 1, now adding in age, sex, ejection fraction and diabetes. Did the association between treatment and outcome appear to get stronger, weaker or stay the same compared to the unadjusted model in #1?
+
+```{r question-3, results='hide'}
+## ===============
+## Question 3
+## ===============
+
+# model odds of death
+formula2 <- I_death ~ I_ace + age + I_sex + ef + I_dm
+mod2 <- glm(formula2, family = binomial, data = svd)
+coef2 <- tidy(mod2, conf.int=TRUE, exponentiate=TRUE) %>% rename(OR = estimate)
+
+# get estimated OR associated with ACE inhibitor
+cbind(model=c(1,2), rbind(coef[2, c(2,5:7)], coef2[2, c(2,5:7)]))
+```
+
+The effect size estimate and confidence intervals shifted to be slightly stronger in the negative direction. The p-value was seriously reduced.
+
+4. 
+
+Fit a model to evaluate whether ejection fraction (as a continuous variable) modifies the treatment effect on survival. What do you conclude from this model and summarize your conclusion in a sentence suitable for a scientific publication.
+
+```{r question-4, results='hide'}
+## ===============
+## Question 4
+## ===============
+
+# model odds of death
+mod3 <- glm(I_death ~ I_ace + ef, family = binomial, data = svd)
+mod4 <- glm(I_death ~ I_ace * ef, family = binomial, data = svd)
+coef3 <- tidy(mod3, conf.int=TRUE, exponentiate=TRUE) %>% rename(OR = estimate)
+coef4 <- tidy(mod4, conf.int=TRUE, exponentiate=TRUE) %>% rename(OR = estimate)
+coef3; coef4
+
+# test if interaction term significantly improve model likelihood
+anova(mod3, mod4, test="LRT")  # LRT p-value: 0.043
+
+```
+
+5. 
+
+Now suppose the investigators wanted to evaluate whether having low ejection fraction (indicated by ef<20, yes/no) modifies the treatment’s effect on death. Fit a model to evaluate this question and state your conclusion, including your rationale.
+
+```{r question-5, results='hide'}
+## ===============
+## Question 5
+## ===============
+
+svd$efLow = ifelse(svd$ef < 20, 1, 0)
+svd_labelled$EFBinary = ifelse(svd$efLow == 1, "Low", "Not low")
+# model odds of death
+mod5 <- glm(I_death ~ I_ace + efLow, family = binomial, data = svd)
+mod6 <- glm(I_death ~ I_ace * efLow, family = binomial, data = svd)
+coef5 <- tidy(mod5, conf.int=TRUE, exponentiate=TRUE) %>% rename(OR = estimate)
+coef6 <- tidy(mod6, conf.int=TRUE, exponentiate=TRUE) %>% rename(OR = estimate)
+coef5; coef6
+
+# test if interaction term significantly improve model likelihood
+anova(mod5, mod6, test="LRT")  # LRT p-value: 0.039
+
+```
+
+6.
+
+Using the model in #5, provide the treatment odds ratio and 95% confidence interval for those with and without low ejection fraction (assuming constant values for any other variables that are in your model for this comparison).
+
+```{r question-6, results='hide'}
+## ===============
+## Question 6
+## ===============
+
+# get estimated OR associated with ACE inhibitor
+cbind(coef6[c(2,4), c(1,2,5:7)])
+
+```
+
+7. 
+
+Suppose the effect of the baseline ejection fraction on the death outcome is now of interest. Can you use the coefficients in the model you fit in question 5 to evaluate whether treatment modifies the effect of low ejection fraction on death? If yes, discuss what is your conclusion.
+
+```{r question-7, results='hide'}
+## ===============
+## Question 7
+## ===============
+
+# get estimated OR associated with baseline ejection fraction
+cbind(coef6[c(3,4), c(1,2,5:7)])
+
+```
+
+8. 
+
+(optional) Investigate whether the modification of the treatment effect on the ejection fraction appears to be non-linear.
+
+```{r question-8, results='hide'}
+## ===============
+## Question 8
+## ===============
+
+svd$efLow = ifelse(svd$ef < 20, 1, 0)
+svd_labelled$EFBinary = ifelse(svd$efLow == 1, "Low", "Not low")
+# model odds of death
+mod7 <- glm(I_death ~ I_ace + ef, family = binomial, data = svd)
+mod8 <- glm(I_death ~ I_ace * ef, family = binomial, data = svd)
+coef7 <- tidy(mod5, conf.int=TRUE, exponentiate=TRUE) %>% rename(OR = estimate)
+coef8 <- tidy(mod6, conf.int=TRUE, exponentiate=TRUE) %>% rename(OR = estimate)
+coef7; coef8
+
+# test if interaction term significantly improve model likelihood
+anova(mod7, mod8, test="LRT")  # LRT p-value: 0.039
+
+```
+
+**End of report. Code appendix begins on the next page.**
+
+\pagebreak
+
+## Code Appendix
+
+```{r allcode, ref.label = knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+**End of document.**
