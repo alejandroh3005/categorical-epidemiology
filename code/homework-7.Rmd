@@ -1,0 +1,63 @@
+---
+title: "BIOST 536: Homework 6"
+subtitle: "Department of Biostatistics @ University of Washington"
+# author: 
+# - Alejandro Hernandez
+date: "25 November 2024"
+output: pdf_document
+---
+
+```{r setup,include=F}
+# clear environment
+rm(list=ls())
+
+# setup options
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, results='hide')
+options(knitr.kable.NA = '-', digits = 2)
+labs = knitr::all_labels()
+labs = labs[!labs %in% c("setup", "allcode")]
+```
+
+```{r load}
+# load relevant packages
+library(dplyr)      # data manipulation
+library(ggplot2)    # data visualization
+library(gtsummary)  # data summary
+library(broom)      # tidy tables
+library(gmodels)    # model fitting
+
+# load data
+svd <- read.csv("../data/solvd_simulated.csv")
+ls(); names(svd); dim(svd)
+str(svd)
+
+## handle missing data
+anyNA(svd)  #no missing data
+
+```
+
+## Background
+
+Trichopoulos et al. (1976, British J. Obstet Gynaecol 83:645) reported on a matched case-control study of secondary infertility. They were interested in spontaneous abortion and induced abortion as risk factors. The data were re-analyzed by Hogue (1978). Both papers are available in a single PDF file on Canvas folder. You are not required to read the papers, but they are provided if you would like to read them. A short presentation introducing HW7 will be given in class on November 19; this presentation should cover the necessary background from the papers. 
+
+Although you do not need the data to do this assignment, the data are available in infert.dta . Note that “the number of previous spontaneous abortions” and “the number of previous induced abortions” are recorded as in Table 1 of the paper by Trichopoulos et al. In addition to the variables listed in the paper, dummy variables g2-g8 are in the dataset to indicate all but the 0/0 and 2+/2+ categories of Table 1. A variable matchset has also been created to indicate the 83 matched sets. Moreover, strata have been formed by pooling all matched sets with identical values of the matching variables. These strata are identified by the variable called stratum. The single person who had both 2+ spontaneous abortion and 2+ induced abortions is omitted from the dataset. 
+
+Files containing software output (both R and STATA) from fitting a variety of models and are also available on CANVAS. Notice that the R output gives model coefficients and the STATA output gives Odds Ratios. Examine this output to answer the following questions. 
+
+1. Models using ordinary logistic regression and no adjustment for the matching variables:
+
+(a)  Model 1a is a logistic model with only dummy variables indicating the three groups of number of prior induced abortions. According to this model, is induced abortion associated with secondary infertility?
+
+
+
+
+**End of report. Code appendix begins on the next page.**
+
+\pagebreak
+
+## Code Appendix
+
+```{r allcode, ref.label = knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+**End of document.**
