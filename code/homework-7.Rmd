@@ -1,5 +1,5 @@
 ---
-title: "BIOST 536: Homework 6"
+title: "BIOST 536: Homework 7"
 subtitle: "Department of Biostatistics @ University of Washington"
 # author: 
 # - Alejandro Hernandez
@@ -20,19 +20,22 @@ labs = labs[!labs %in% c("setup", "allcode")]
 
 ```{r load}
 # load relevant packages
-library(dplyr)      # data manipulation
-library(ggplot2)    # data visualization
-library(gtsummary)  # data summary
-library(broom)      # tidy tables
-library(gmodels)    # model fitting
+library(foreign)    # read data
+library(survey)     # Wald test for a term in a regression model
+library(survival)   # conditional logistic regression
+library(car)        # test linear hypothesis
 
 # load data
-svd <- read.csv("../data/solvd_simulated.csv")
-ls(); names(svd); dim(svd)
-str(svd)
+infert <- foreign::read.dta("../data/infert.dta")
+ls(); names(infert); dim(infert)
+str(infert)
+head(infert)
+# infert %>% group_by(stratum) %>% summarize(N=n()) %>% arrange(desc(N))
 
 ## handle missing data
-anyNA(svd)  #no missing data
+anyNA(infert)  #no missing data
+
+attach(infert)
 
 ```
 
@@ -44,12 +47,427 @@ Although you do not need the data to do this assignment, the data are available 
 
 Files containing software output (both R and STATA) from fitting a variety of models and are also available on CANVAS. Notice that the R output gives model coefficients and the STATA output gives Odds Ratios. Examine this output to answer the following questions. 
 
-1. Models using ordinary logistic regression and no adjustment for the matching variables:
+## 1. Ordinary unadjusted logistic regression
+
+**Models using ordinary logistic regression and no adjustment for the matching variables:**
 
 (a)  Model 1a is a logistic model with only dummy variables indicating the three groups of number of prior induced abortions. According to this model, is induced abortion associated with secondary infertility?
 
+```{r model-1a}
+############################
+#### --- QUESTION 1 --- ####
+############################
+
+## 1a.
+# Model secondary infertility using unadjusted ordinary logistic regression with dummy variables indicating three groups of number of prior induced abortions 
+induced.ctg <- as.factor(induced)
+m1a <- glm(case ~ induced.ctg, family = "binomial")
+summary(m1a)$coefficients
+
+# Wald test for global significance of the number of prior induced abortions
+survey::regTermTest(m1a, "induced.ctg", df = Inf)
+
+```
+
+According to this model, we do not have evidence induced abortion is associated with secondary infertility (Wald p=1.0). 
+
+(b) Model 1b is a logistic model with only the dummy variables indicating the three groups of number of prior spontaneous abortions. According to this model, is spontaneous abortion associated with secondary infertility? 
+
+```{r model-1b}
+## 1b.
+# Model secondary infertility using unadjusted ordinary logistic regression with dummy variables indicating three groups of number of prior spontaneous abortions 
+spont.ctg <- as.factor(spont)
+m1b <- glm(case ~ spont.ctg, family = "binomial")
+summary(m1b)$coefficients
+
+# Wald test for global significance of the number of prior spontaneous abortions
+regTermTest(m1b, "spont.ctg", df = Inf)
+
+```
+
+According to this model, we have evidence induced abortion is associated with secondary infertility (Wald p<0.001).
+
+(c) Model 1c is a logistic model with main-effect dummy variables for both spontaneous abortion and induced abortion. According to this model are spontaneous abortion and induced abortion associated with the risk of secondary infertility when each is adjusted for the other?
+
+```{r model-1c}
+## 1c.
+# Model secondary infertility using unadjusted ordinary logistic regression with dummy variables indicating three groups of number of prior induced and spontaneous abortions 
+m1c <- glm(case ~ induced.ctg + spont.ctg, family = "binomial")
+summary(m1c)$coefficients
+
+# Wald test for global significance of the number of prior induced abortions
+regTermTest(m1c, "induced.ctg", df = Inf)
+# Wald test for global significance of the number of prior spontaneous abortions
+regTermTest(m1c, "spont.ctg", df = Inf)
+```
+
+According to this model, when adjusting for each other, we have insufficient evidence induced abortion is associated with secondary infertility (Wald p=0.1) and sufficient evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001).
+
+(d) Model 1d) is a model with seven dummy variables indicating the eight combinations of the spontaneous and induced abortion variables that are observed in these data. Observe the LR (likelihood ratio) test comparing this model to the model fit in c) to test for interaction between number of spontaneous abortions and number of induced abortions. What do you conclude?
+
+```{r model-1d}
+## 1d.
+# Model secondary infertility using unadjusted ordinary logistic regression with dummy variables indicating eight combinations of the induced and spontaneous abortion variables 
+m1d <- glm(case ~ g2 + g3 + g4 + g5 + g6 + g7 + g8, family = "binomial")
+summary(m1d)$coefficients
+
+# Wald test for global significance of eight combinations
+car::linearHypothesis(m1d, c("g2 = 0", "g3=0", "g4=0", "g5=0", "g6=0", "g7=0", 
+                             "g8=0"), test = "Chisq")
+
+# Likelihood ratio test for effect modification between number of induced abortions and number of spontaneous abortions
+anova(m1c, m1d, test = "Chisq")
+
+```
+
+According to this model, we have insufficient evidence the number of induced abortions modify the association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=0.097).
+
+## 2. Ordinary logistic regression adjusted for covariates
+
+**Models 2a) through 2d) repeat 1a) through 1d), also using ordinary logistic regression, but adjusting for matching variables as follows:**
+
+i. education: dummy variable main effects only
+
+ii. age: continuous linear main effect only
+
+iii. parity: dummy variable main effects only
+
+For each of a) through d) compare results to those in Question 1 and discuss reasons
+for the similarities and differences you see.
+
+```{r model-2a}
+############################
+#### --- QUESTION 2 --- ####
+############################
+
+educ.ctg <- as.factor(educ)
+parity.ctg <- as.factor(parity)
+
+## 2a.
+# Model secondary infertility using adjusted ordinary logistic regression with dummy variables indicating three groups of number of prior induced abortions 
+m2a <- glm(case ~ induced.ctg + educ.ctg + age + parity.ctg, family="binomial")
+rbind(summary(m1a)$coefficients,
+      summary(m2a)$coefficients)
+
+# Wald test for global significance of the number of prior induced abortions
+regTermTest(m1a, "induced.ctg", df = Inf)
+regTermTest(m2a, "induced.ctg", df = Inf)
+
+```
+
+According to the (2a) model adjusting for education, age, and parity, we do not have evidence induced abortion is associated with secondary infertility (Wald p=1.0); this agrees with the unadjusted model. Adjustment of these variables did not impact the association of secondary infertility with number of induced abortions because this association is measured within our matched-case sample, such that those with and without secondary infertility have the same distributions of age, education level, and parity.
+
+```{r model-2b}
+## 2b.
+# Model secondary infertility using adjusted ordinary logistic regression with dummy variables indicating three groups of number of prior spontaneous abortions 
+m2b <- glm(case ~ spont.ctg + educ.ctg + age + parity.ctg, family = "binomial")
+rbind(summary(m1b)$coefficients,
+      summary(m2b)$coefficients)
+
+# Wald test for global significance of the number of prior spontaneous abortions
+regTermTest(m1b, "spont.ctg", df = Inf)
+regTermTest(m2b, "spont.ctg", df = Inf)
+
+```
+According to the (2b) model adjusting for education, age, and parity, we have evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); this agrees with the unadjusted model. Adjustment of these variables did not impact the association of secondary infertility with number of spontaneous abortions for reason similar to those explained in 2a.
+
+```{r model-2c}
+## 2c.
+# Model secondary infertility using adjusted ordinary logistic regression with dummy variables indicating three groups of number of prior induced and spontaneous abortions 
+m2c <- glm(case ~ induced.ctg + spont.ctg + educ.ctg + age + parity.ctg, 
+           family = "binomial")
+rbind(summary(m1c)$coefficients,
+      summary(m2c)$coefficients)
+
+# Wald test for global significance of the number of prior induced abortions
+regTermTest(m1c, "induced.ctg", df = Inf)
+regTermTest(m2c, "induced.ctg", df = Inf)
+# Wald test for global significance of the number of prior spontaneous abortions
+regTermTest(m1c, "spont.ctg", df = Inf)
+regTermTest(m2c, "spont.ctg", df = Inf)
+```
+
+According to the (2c) model, when adjusting for education, age, parity, and each other, we have  evidence induced abortion is associated with secondary infertility (Wald p<0.001) and evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001). This second model
+disagrees with its predecessor regarding the adjusted "effect" of number of induced abortions. Compared to the (1c) model, the association of induced abortions is much stronger in the (2c) model. **As of now, I am uncertain why.**
+
+```{r model-2d}
+## 2d.
+# Model secondary infertility using adjusted ordinary logistic regression with dummy variables indicating eight combinations of the induced and spontaneous abortion variables 
+m2d <- glm(case ~ g2 + g3 + g4 + g5 + g6 + g7 + g8 + 
+             educ.ctg + age + parity.ctg, family = "binomial")
+rbind(summary(m1d)$coefficients,
+      summary(m2d)$coefficients)
+
+# Wald test for global significance of eight combinations
+linearHypothesis(m2d, c("g2=0", "g3=0", "g4=0", "g5=0", "g6=0", "g7=0", "g8=0"),
+                 test = "Chisq")
+
+# Likelihood ratio test for effect modification between number of induced abortions and number of spontaneous abortions
+anova(m2c, m2d, test = "Chisq")
+```
+
+According to the (2d) model, we have insufficient evidence the number of induced abortions modify the adjusted association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=0.5); this agrees with (1d). **As of now, I am uncertain why.**
+
+## 3. Conditional logistic regression for matched sets
+
+**Models 3a) through 3d) repeat models 1a) through 1d) using a conditional logistic regression for which each matched set is a single stratum. For each of a) through d) compare model results to those in a) through d) of question 2, and discuss reasons for similarities and differences you see.**
+
+```{r model-3a}
+############################
+#### --- QUESTION 3 --- ####
+############################
+
+## 3a.
+# Model secondary infertility using unadjusted conditional logistic regression with dummy variables indicating three groups of number of prior induced abortions 
+m3a <- survival::clogit(case ~ induced.ctg + survival::strata(matchset))
+summary(m2a)$coefficients
+summary(m3a)$coefficients[1:2,]
+
+# Wald test for global significance of the number of prior induced abortions
+regTermTest(m2a, "induced.ctg", df = Inf)
+regTermTest(m3a, "induced.ctg", df = Inf)
+
+```
+
+According to the (3a) model, we do not have sufficient evidence induced abortion is associated with secondary infertility (Wald p=0.9); this agrees with (2a). **As of now, I am uncertain why.**
+
+```{r model-3b}
+## 3b.
+# Model secondary infertility using unadjusted conditional logistic regression with dummy variables indicating three groups of number of prior spontaneous abortions 
+m3b <- clogit(case ~ spont.ctg + strata(matchset))
+summary(m2b)$coefficients
+summary(m3b)$coefficients
+
+# Wald test for global significance of the number of prior spontaneous abortions
+regTermTest(m2b, "spont.ctg", df = Inf)
+regTermTest(m3b, "spont.ctg", df = Inf)
+
+```
+
+According to the (3b) model, we have sufficient evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); this agrees with (2b). **As of now, I am uncertain why.**
+
+```{r model-3c}
+## 3c.
+# Model secondary infertility using unadjusted conditional logistic regression with dummy variables indicating three groups of number of prior induced and spontaneous abortions 
+m3c <- clogit(case ~ induced.ctg + spont.ctg + strata(matchset))
+summary(m2c)$coefficients
+summary(m3c)$coefficients
+
+# Wald test for global significance of the number of prior induced abortions
+regTermTest(m2c, "induced.ctg", df = Inf)
+regTermTest(m3c, "induced.ctg", df = Inf)
+# Wald test for global significance of the number of prior spontaneous abortions
+regTermTest(m2c, "spont.ctg", df = Inf)
+regTermTest(m3c, "spont.ctg", df = Inf)
+```
+
+According to the (3c) model, when adjusting for each other, we have evidence induced abortion is associated with secondary infertility (Wald p<0.001) and evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); these results agree with (2c). **As of now, I am uncertain why.**
+
+```{r model-3d}
+## 3d.
+# Model secondary infertility using unadjusted conditional logistic regression with dummy variables indicating eight combinations of the induced and spontaneous abortion variables 
+m3d <- clogit(case ~ g2 + g3 + g4 + g5 + g6 + g7 + g8 + strata(matchset))
+summary(m2d)$coefficients
+summary(m3d)$coefficients
+
+# Wald test for global significance of eight combinations
+linearHypothesis(m2d, c("g2=0", "g3=0", "g4=0", "g5=0", "g6=0", "g7=0", "g8=0"),
+                 test = "Chisq")
+linearHypothesis(m3d, c("g2=0", "g3=0", "g4=0", "g5=0", "g6=0", "g7=0", "g8=0"),
+                 test = "Chisq")
+
+# Likelihood ratio test for effect modification between number of induced abortions and number of spontaneous abortions
+anova(m2c, m2d, test = "Chisq")
+anova(m3c, m3d, test = "Chisq")
+```
+
+According to the (3d) model, we have insufficient evidence the number of induced abortions modify the adjusted association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=0.39); this agrees with (2d). All the "effect" sizes of (3d) are greater than (2d)--some are enormous. **As of now, I am uncertain why.**
+
+## 4. Ordinary logistic regression adjusted for matched sets
+
+**Models 4a) through 4d) repeat models 1a) through 1d) using ordinary logistic regression and dummy variable adjustment for each matched set. For each of a) through d) compare model results to those in 2 and 3 above, and discuss reasons for the similarities and differences you see.**
+
+```{r model-4a}
+## 4a.
+# Model secondary infertility using adjusted ordinary logistic regression with dummy variables indicating each matched set and three groups of number of prior induced abortions 
+matchset.ctg <- as.factor(matchset)
+m4a <- glm(case ~ induced.ctg + matchset.ctg, family = "binomial")
+summary(m4a)$coefficients
+
+# Wald test for global significance of the number of prior induced abortions
+regTermTest(m4a, "induced.ctg", df = Inf)
+```
+
+```{r model-4b}
+## 4b.
+# Model secondary infertility using adjusted ordinary logistic regression with dummy variables indicating each matched set and three groups of number of prior spontaneous abortions
+m4b <- glm(case ~ spont.ctg + matchset.ctg, family = "binomial")
+summary(m4b)$coefficients
+
+# Wald test for global significance of the number of prior spontaneous abortions
+regTermTest(m4b, "spont.ctg", df = Inf)
+
+```
+
+```{r model-4c}
+## 4c.
+# Model secondary infertility using adjusted ordinary logistic regression with dummy variables indicating each matched set and three groups of number of prior induced and spontaneous abortions 
+m4c <- glm(case ~ induced.ctg + spont.ctg + matchset.ctg, family = "binomial")
+summary(m4c)$coefficients
+
+# Wald tests for global significance of the number of prior abortions
+regTermTest(m4c, "induced.ctg", df = Inf)
+regTermTest(m4c, "spont.ctg", df = Inf)
+
+```
+
+```{r model-4d}
+## 4d.
+# Model secondary infertility using adjusted ordinary logistic regression with dummy variables indicating each matched set and eight combinations of the induced and spontaneous abortion variables 
+m4d <- glm(case ~ g2 + g3 + g4 + g5 + g6 + g7 + g8 + matchset.ctg, 
+           family = "binomial")
+summary(m4d)$coefficients
+
+# Wald test for global significance of eight combinations
+linearHypothesis(m4d, c("g2=0", "g3=0", "g4=0", "g5=0", "g6=0", "g7=0", "g8=0"), 
+                 test = "Chisq")
+
+# Likelihood ratio test for effect modification between number of induced abortions and number of spontaneous abortions
+anova(m4c, m4d, test = "Chisq")
+
+```
+
+## 5. Conditional logistic regression for pooled matched sets
+
+**Models 5a) through 5d) repeat models 1a) through 1d) using conditional logistic regression using the strata formed by pooling matched sets with like values of the matching variables. For each of a) through d) compare model results to those in question 3 and discuss reasons for the similarities and differences you see.**
+
+```{r model-5a}
+############################
+#### --- QUESTION 5 --- ####
+############################
+
+## 5a.
+# Model secondary infertility using conditional logistic regression with pooled matched sets and with dummy variables indicating three groups of number of prior induced abortions 
+m5a <- clogit(case ~ induced.ctg + strata(stratum))
+summary(m5a)$coefficients
+
+# Wald test for global significance of the number of prior induced abortions
+regTermTest(m5a, "induced.ctg", df=Inf)
+
+```
+
+According to this model, we have __ evidence induced abortion is associated with secondary infertility (Wald p=). 
+
+```{r model-5b}
+## 5b.
+# Model secondary infertility using conditional logistic regression with pooled matched sets and with dummy variables indicating three groups of number of prior spontaneous abortions 
+m5b <- clogit(case ~ spont.ctg + strata(stratum))
+summary(m5b)$coefficients
+
+# Wald test for global significance of the number of prior spontaneous abortions
+regTermTest(m5b, "spont.ctg", df=Inf)
+
+```
+
+According to this model, we have __ evidence spontaneous abortion is associated with secondary infertility (Wald p=).
+
+```{r model-5c}
+## 5c.
+# Model secondary infertility using conditional logistic regression with pooled matched sets and with dummy variables indicating three groups of number of prior induced and spontaneous abortions 
+m5c <- clogit( case ~ induced.ctg + spont.ctg + strata(stratum))
+summary(m5c)$coefficients
+
+# Wald tests for global significance of the number of prior abortions
+regTermTest(m5c, "induced.ctg", df=Inf)
+regTermTest(m5c, "spont.ctg", df=Inf)
+
+```
+
+According to this model, when adjusting for each other, we have ___ evidence induced abortion is associated with secondary infertility (Wald p=) and ___ evidence spontaneous abortion is associated with secondary infertility (Wald p=).
+
+```{r model-5d}
+## 5d.
+# Model secondary infertility using conditional logistic regression with pooled matched sets and dummy variables indicating eight combinations of the induced and spontaneous abortion variables 
+m5d <- clogit( case ~ g2 + g3 + g4 + g5 + g6 + g7 + g8 + strata(stratum))
+summary(m5d)$coefficients
+
+# Wald test for global significance of eight combinations
+linearHypothesis(m5d, c("g2=0", "g3=0", "g4=0", "g5=0", "g6=0", "g7=0", "g8=0"), 
+                 test = "Chisq")
+
+# Likelihood ratio test for effect modification between number of induced abortions and number of spontaneous abortions
+anova(m5c, m5d, test = "Chisq")
+```
+
+According to this model, we have ___ evidence the number of induced abortions modify the association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=).
 
 
+## 6. Ordinary logistic regression adjusted for pooled matched sets
+
+**Models 6a) through 6d) repeat models 1a) through 1d) using ordinary logistic regression with dummy variable adjustment for the strata formed by pooling matched sets with like values of the matching variables. For each of a) through d), compare results to those in 5 above. Discuss reasons for the similarities and differences you see.**
+
+```{r}
+############################
+#### --- QUESTION 6 --- ####
+############################
+
+```
+
+According to this model, we have __ evidence induced abortion is associated with secondary infertility (Wald p=). 
+
+```{r}
+
+```
+
+According to this model, we have __ evidence spontaneous abortion is associated with secondary infertility (Wald p=).
+
+```{r}
+
+```
+
+According to this model, when adjusting for each other, we have ___ evidence induced abortion is associated with secondary infertility (Wald p=) and ___ evidence spontaneous abortion is associated with secondary infertility (Wald p=).
+
+```{r}
+
+```
+
+According to this model, we have ___ evidence the number of induced abortions modify the association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=).
+
+## 7. Identifying the published model
+
+For which of the 24 models examined in this homework do the odds ratio estimates most closely resemble those given by Trichopoulos et al., in Table 1? That is, under which model are their estimates computed? What does this say, by today’s standards, about the appropriateness of the analysis they performed? What are its strengths and weaknesses? 
+
+```{r question-7}
+############################
+#### --- QUESTION 7 --- ####
+############################
+
+```
+
+## 8.
+
+If the 24 models examined in this homework had dichotomized the two exposure variables as Hogue did, which models do you think would have led to estimates the most similar to the ones Hogue presented in both Tables 41-1 and 41-2? That is, which models do you think are closest to those under which Hogue’s estimates are computed? What does this say, by today’s standards, about the appropriateness of the analyses she performed? What are their strengths and weaknesses? 
+
+```{r question-8}
+############################
+#### --- QUESTION 8 --- ####
+############################
+
+```
+
+## 9.
+
+Using your answers to Questions 7 and 8, but also any comparisons in questions about these data from the other parts of this Homework, how appropriate are the estimates presented by Trichopoulos et al. in Table 1 and by Hogue in Tables 41-1 and 41-2? 
+
+
+## 10.
+
+If you were to choose one of the 24 models presented in this Homework to summarize these data in a paper on the relationship of induced abortion to the risk of secondary infertility, which would you choose, and why? 
+
+
+## 11.
+
+Discuss strengths and limitations of the study design, focusing on the investigator’s decision to use a matched design, individual vs. frequency matching, the choice of matching variables, etc.
 
 **End of report. Code appendix begins on the next page.**
 
