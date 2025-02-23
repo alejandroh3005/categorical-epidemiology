@@ -99,6 +99,7 @@ summary(m1c)$coefficients
 regTermTest(m1c, "induced.ctg", df = Inf)
 # Wald test for global significance of the number of prior spontaneous abortions
 regTermTest(m1c, "spont.ctg", df = Inf)
+
 ```
 
 According to this model, when adjusting for each other, we have insufficient evidence induced abortion is associated with secondary infertility (Wald p=0.1) and sufficient evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001).
@@ -169,6 +170,7 @@ regTermTest(m1b, "spont.ctg", df = Inf)
 regTermTest(m2b, "spont.ctg", df = Inf)
 
 ```
+
 According to the (2b) model adjusting for education, age, and parity, we have evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); this agrees with the unadjusted model. Adjustment of these variables did not impact the association of secondary infertility with number of spontaneous abortions for reason similar to those explained in 2a.
 
 ```{r model-2c}
@@ -187,8 +189,7 @@ regTermTest(m1c, "spont.ctg", df = Inf)
 regTermTest(m2c, "spont.ctg", df = Inf)
 ```
 
-According to the (2c) model, when adjusting for education, age, parity, and each other, we have  evidence induced abortion is associated with secondary infertility (Wald p<0.001) and evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001). This second model
-disagrees with its predecessor regarding the adjusted "effect" of number of induced abortions. Compared to the (1c) model, the association of induced abortions is much stronger in the (2c) model. **As of now, I am uncertain why.**
+According to the (2c) model, when adjusting for education, age, parity, and each other, we have  evidence induced abortion is associated with secondary infertility (Wald p<0.001) and evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001). This second model disagrees with its predecessor regarding the adjusted "effect" of number of induced abortions. Compared to the (1c) model, the association of induced abortions is much stronger in the (2c) model.
 
 ```{r model-2d}
 ## 2d.
@@ -206,9 +207,9 @@ linearHypothesis(m2d, c("g2=0", "g3=0", "g4=0", "g5=0", "g6=0", "g7=0", "g8=0"),
 anova(m2c, m2d, test = "Chisq")
 ```
 
-According to the (2d) model, we have insufficient evidence the number of induced abortions modify the adjusted association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=0.5); this agrees with (1d). **As of now, I am uncertain why.**
+According to the (2d) model, we have insufficient evidence the number of induced abortions modify the adjusted association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=0.5); this agrees with (1d).
 
-## 3. Conditional logistic regression for matched sets
+## 3.* Conditional logistic regression for matched sets
 
 **Models 3a) through 3d) repeat models 1a) through 1d) using a conditional logistic regression for which each matched set is a single stratum. For each of a) through d) compare model results to those in a) through d) of question 2, and discuss reasons for similarities and differences you see.**
 
@@ -229,7 +230,7 @@ regTermTest(m3a, "induced.ctg", df = Inf)
 
 ```
 
-According to the (3a) model, we do not have sufficient evidence induced abortion is associated with secondary infertility (Wald p=0.9); this agrees with (2a). **As of now, I am uncertain why.**
+According to the (3a) model, we do not have sufficient evidence induced abortion is associated with secondary infertility (Wald p=0.9); this agrees with (2a).
 
 ```{r model-3b}
 ## 3b.
@@ -244,7 +245,7 @@ regTermTest(m3b, "spont.ctg", df = Inf)
 
 ```
 
-According to the (3b) model, we have sufficient evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); this agrees with (2b). **As of now, I am uncertain why.**
+According to the (3b) model, we have sufficient evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); this agrees with (2b).
 
 ```{r model-3c}
 ## 3c.
@@ -261,13 +262,12 @@ regTermTest(m2c, "spont.ctg", df = Inf)
 regTermTest(m3c, "spont.ctg", df = Inf)
 ```
 
-According to the (3c) model, when adjusting for each other, we have evidence induced abortion is associated with secondary infertility (Wald p<0.001) and evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); these results agree with (2c). **As of now, I am uncertain why.**
+According to the (3c) model, when adjusting for each other, we have evidence induced abortion is associated with secondary infertility (Wald p<0.001) and evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); these results agree with (2c).
 
 ```{r model-3d}
 ## 3d.
 # Model secondary infertility using unadjusted conditional logistic regression with dummy variables indicating eight combinations of the induced and spontaneous abortion variables 
 m3d <- clogit(case ~ g2 + g3 + g4 + g5 + g6 + g7 + g8 + strata(matchset))
-summary(m2d)$coefficients
 summary(m3d)$coefficients
 
 # Wald test for global significance of eight combinations
@@ -281,9 +281,9 @@ anova(m2c, m2d, test = "Chisq")
 anova(m3c, m3d, test = "Chisq")
 ```
 
-According to the (3d) model, we have insufficient evidence the number of induced abortions modify the adjusted association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=0.39); this agrees with (2d). All the "effect" sizes of (3d) are greater than (2d)--some are enormous. **As of now, I am uncertain why.**
+According to the (3d) model, we have insufficient evidence the number of induced abortions modify the adjusted association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=0.39); this agrees with (2d). All the OR estimates of (3d) are greater than (2d)--some are enormous.
 
-## 4. Ordinary logistic regression adjusted for matched sets
+## 4.* Ordinary logistic regression adjusted for matched sets
 
 **Models 4a) through 4d) repeat models 1a) through 1d) using ordinary logistic regression and dummy variable adjustment for each matched set. For each of a) through d) compare model results to those in 2 and 3 above, and discuss reasons for the similarities and differences you see.**
 
@@ -298,6 +298,8 @@ summary(m4a)$coefficients
 regTermTest(m4a, "induced.ctg", df = Inf)
 ```
 
+According to the (4a) model, we do not have sufficient evidence induced abortion is associated with secondary infertility (Wald p=0.9); this agrees with (3a, 2a, 1a).
+
 ```{r model-4b}
 ## 4b.
 # Model secondary infertility using adjusted ordinary logistic regression with dummy variables indicating each matched set and three groups of number of prior spontaneous abortions
@@ -308,6 +310,8 @@ summary(m4b)$coefficients
 regTermTest(m4b, "spont.ctg", df = Inf)
 
 ```
+
+According to the (4b) model, we have sufficient evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); this agrees with (3b, 2b, 1b).
 
 ```{r model-4c}
 ## 4c.
@@ -320,6 +324,8 @@ regTermTest(m4c, "induced.ctg", df = Inf)
 regTermTest(m4c, "spont.ctg", df = Inf)
 
 ```
+
+According to the (4c) model, when adjusting for each other, we have evidence induced abortion is associated with secondary infertility (Wald p<0.001) and evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); these results agree with (3c, 2c) and disagree with (1c) regarding the significance of association with induced abortion.
 
 ```{r model-4d}
 ## 4d.
@@ -337,7 +343,9 @@ anova(m4c, m4d, test = "Chisq")
 
 ```
 
-## 5. Conditional logistic regression for pooled matched sets
+According to the (4d) model, we have sufficient evidence the number of induced abortions modify the adjusted association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=0.18); this disagrees with (3d, 2d). Similar to before, some OR estimates are enormous.
+
+## 5.* Conditional logistic regression for pooled matched sets
 
 **Models 5a) through 5d) repeat models 1a) through 1d) using conditional logistic regression using the strata formed by pooling matched sets with like values of the matching variables. For each of a) through d) compare model results to those in question 3 and discuss reasons for the similarities and differences you see.**
 
@@ -356,7 +364,7 @@ regTermTest(m5a, "induced.ctg", df=Inf)
 
 ```
 
-According to this model, we have __ evidence induced abortion is associated with secondary infertility (Wald p=). 
+According to the (5a) model, we have insufficient evidence induced abortion is associated with secondary infertility (Wald p=0.9); this agrees with similar previous models. 
 
 ```{r model-5b}
 ## 5b.
@@ -369,7 +377,7 @@ regTermTest(m5b, "spont.ctg", df=Inf)
 
 ```
 
-According to this model, we have __ evidence spontaneous abortion is associated with secondary infertility (Wald p=).
+According to the (5b) model, we have sufficient evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); this agrees with similar previous models.
 
 ```{r model-5c}
 ## 5c.
@@ -383,7 +391,7 @@ regTermTest(m5c, "spont.ctg", df=Inf)
 
 ```
 
-According to this model, when adjusting for each other, we have ___ evidence induced abortion is associated with secondary infertility (Wald p=) and ___ evidence spontaneous abortion is associated with secondary infertility (Wald p=).
+According to the (5c) model, when adjusting for each other, we have sufficient evidence induced abortion is associated with secondary infertility (Wald p<0.001) and sufficient evidence spontaneous abortion is associated with secondary infertility (Wald p<0.001); this agrees with all similar previous models except (1d). 
 
 ```{r model-5d}
 ## 5d.
@@ -399,75 +407,33 @@ linearHypothesis(m5d, c("g2=0", "g3=0", "g4=0", "g5=0", "g6=0", "g7=0", "g8=0"),
 anova(m5c, m5d, test = "Chisq")
 ```
 
-According to this model, we have ___ evidence the number of induced abortions modify the association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=).
+According to the (5d) model, we have insufficient evidence the number of induced abortions modify the association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=0.3); this agrees with (3d, 2d) and disagrees with (4d). Again, notice that some OR estimates are massive.
 
+## 7.* Identifying the Trichopoulos model
 
-## 6. Ordinary logistic regression adjusted for pooled matched sets
+**For which of the 24 models examined in this homework do the odds ratio estimates most closely resemble those given by Trichopoulos et al., in Table 1? That is, under which model are their estimates computed? What does this say, by today’s standards, about the appropriateness of the analysis they performed? What are its strengths and weaknesses?**
 
-**Models 6a) through 6d) repeat models 1a) through 1d) using ordinary logistic regression with dummy variable adjustment for the strata formed by pooling matched sets with like values of the matching variables. For each of a) through d), compare results to those in 5 above. Discuss reasons for the similarities and differences you see.**
+The odds ratio estimates presented by Trichopoulos et al. closely resemble Model 1d, the  logistic regression model that includes interaction between the number of induced and spontaneous abortions, without adjustment for any covariates. The absence of adjustment variables in their model is a clear limitation, as their estimates are ignorant to possible confounders. Fortunately, they discuss this weakness and present their estimates as associative. Arguably, model simplicity is a strength, but I believe the setting of their work would find an adjusted model to be more scientific and take advantage of available information.
 
-```{r}
-############################
-#### --- QUESTION 6 --- ####
-############################
+## 8.* Identifying the Hogue model
 
-```
+**If the 24 models examined in this homework had dichotomized the two exposure variables as Hogue did, which models do you think would have led to estimates the most similar to the ones Hogue presented in both Tables 41-1 and 41-2? That is, which models do you think are closest to those under which Hogue’s estimates are computed? What does this say, by today’s standards, about the appropriateness of the analyses she performed? What are their strengths and weaknesses?**
 
-According to this model, we have __ evidence induced abortion is associated with secondary infertility (Wald p=). 
+The odds ratio estimates presented by Hogue roughly resemble Model 1c, the logistic regression model that includes the number of induced and spontaneous abortions, without adjustment for any covariates. Again, the absence of adjustment variables in their model is a clear limitation and ignorant to confounders. 
 
-```{r}
+## 9.* Critique of Trichopoulos and Hogue
 
-```
+**Using your answers to Questions 7 and 8, but also any comparisons in questions about these data from the other parts of this Homework, how appropriate are the estimates presented by Trichopoulos et al. in Table 1 and by Hogue in Tables 41-1 and 41-2?**
 
-According to this model, we have __ evidence spontaneous abortion is associated with secondary infertility (Wald p=).
+These estimates come from an outdated approach to modeling matched data. Although they are more reasonable than Model 4 (ordinary logistic regression with adjustment of matched sets), they do not use the matched-nature of their data to their advantage--which is fair as conditional logistic regression was not yet popularized.
 
-```{r}
+## 11. Discussion
 
-```
+**Discuss strengths and limitations of the study design, focusing on the investigator’s decision to use a matched design, individual vs. frequency matching, the choice of matching variables, etc.**
 
-According to this model, when adjusting for each other, we have ___ evidence induced abortion is associated with secondary infertility (Wald p=) and ___ evidence spontaneous abortion is associated with secondary infertility (Wald p=).
+* Strengths: Matching avoids confounding effects and matching at the individual level avoids residual confounding from matched variables. Matching by maternity department of the same hospital reduces potential influence from different healthcare factors. 1:2 matching improves statistical power. Both models including interaction effects grant greater flexibility in the estimated main effects. 
 
-```{r}
-
-```
-
-According to this model, we have ___ evidence the number of induced abortions modify the association of number of spontaneous abortions with secondary infertility, or vice versa (LRT p=).
-
-## 7. Identifying the published model
-
-For which of the 24 models examined in this homework do the odds ratio estimates most closely resemble those given by Trichopoulos et al., in Table 1? That is, under which model are their estimates computed? What does this say, by today’s standards, about the appropriateness of the analysis they performed? What are its strengths and weaknesses? 
-
-```{r question-7}
-############################
-#### --- QUESTION 7 --- ####
-############################
-
-```
-
-## 8.
-
-If the 24 models examined in this homework had dichotomized the two exposure variables as Hogue did, which models do you think would have led to estimates the most similar to the ones Hogue presented in both Tables 41-1 and 41-2? That is, which models do you think are closest to those under which Hogue’s estimates are computed? What does this say, by today’s standards, about the appropriateness of the analyses she performed? What are their strengths and weaknesses? 
-
-```{r question-8}
-############################
-#### --- QUESTION 8 --- ####
-############################
-
-```
-
-## 9.
-
-Using your answers to Questions 7 and 8, but also any comparisons in questions about these data from the other parts of this Homework, how appropriate are the estimates presented by Trichopoulos et al. in Table 1 and by Hogue in Tables 41-1 and 41-2? 
-
-
-## 10.
-
-If you were to choose one of the 24 models presented in this Homework to summarize these data in a paper on the relationship of induced abortion to the risk of secondary infertility, which would you choose, and why? 
-
-
-## 11.
-
-Discuss strengths and limitations of the study design, focusing on the investigator’s decision to use a matched design, individual vs. frequency matching, the choice of matching variables, etc.
+* Limitations: Although the data followed a clever matching design, the estimates from Trichopoulos' and Hogue's models were naive to it, opening a door to biased conclusions. Additionally, the findings may be specific to hospitals included in the study if their sample is not representative. Finally, poorly or incorrectly defined levels of education may reduce the control over its confounding effect.  
 
 **End of report. Code appendix begins on the next page.**
 

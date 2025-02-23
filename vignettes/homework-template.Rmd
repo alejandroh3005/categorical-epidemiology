@@ -1,0 +1,48 @@
+---
+title: "BIOST 536: Homework Template"
+subtitle: "Department of Biostatistics @ University of Washington"
+# author: 
+# - Alejandro Hernandez
+date: "3 January 2024"
+output: pdf_document
+---
+
+```{r setup, include=F}
+# Clear environment
+rm(list=ls())
+
+# Setup options
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, results='hide')
+options(knitr.kable.NA = '-', digits = 2)
+labs = knitr::all_labels()
+labs = labs[!labs %in% c("setup", "allcode")]
+```
+
+```{r load}
+# Load relevant packages
+library(gmodels)  # Create model estimates
+
+# Load data
+
+
+# Handle missing data
+
+```
+
+## Logistic Regression
+
+
+
+
+
+
+**End of report. Code appendix begins on the next page.**
+
+\pagebreak
+
+## Code Appendix
+
+```{r allcode, ref.label = knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+**End of document.**
